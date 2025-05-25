@@ -372,13 +372,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   walkState:
-    maxSpeed: 5
-    accelRate: 12
+    targetSpeed: 5
+    accelRate: 10
     decelRate: 10
   runState:
-    maxSpeed: 8
-    accelRate: 8
-    decelRate: 7
+    targetSpeed: 8
+    accelRate: 7
+    decelRate: 9
+  dashState:
+    targetSpeed: 9
+    accelRate: 9
+    decelRate: 9
+    dashSpeed: 25
+    dashDuration: 0.3
+    dashRunLerpAmount: 0.5
+    defaultDashDirection: {x: 1, y: 0}
 --- !u!50 &1428297536
 Rigidbody2D:
   serializedVersion: 5
@@ -393,7 +401,7 @@ Rigidbody2D:
   m_UseAutoMass: 0
   m_Mass: 1
   m_LinearDamping: 0
-  m_AngularDamping: 0.05
+  m_AngularDamping: 0
   m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
