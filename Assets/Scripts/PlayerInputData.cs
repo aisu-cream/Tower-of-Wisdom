@@ -2,15 +2,7 @@ using UnityEngine;
 
 public class PlayerInputData : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    public KeyCode runCode = KeyCode.LeftShift;
+    public KeyCode dashCode = KeyCode.LeftControl;
+    public KeyCode jumpCode = KeyCode.Space;
 }
