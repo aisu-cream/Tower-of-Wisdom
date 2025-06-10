@@ -19,22 +19,15 @@ public abstract class FiniteStateMachine<Estate> : MonoBehaviour where Estate : 
         if (!nextStateKey.Equals(currentState.stateKey))
             TransitionToState(nextStateKey);
 
-        if (currentState.OnUpdateMode()) {
-            currentState.UpdateState();
-        }
+        currentState.UpdateState();
     }
 
     protected void FixedUpdate() {
-        if (currentState.OnFixedUpdateMode()) {
-            currentState.UpdateState();
-        }
+        currentState.FixedUpdateState();
     }
 
-    protected void LateUpdate()
-    {
-        if (currentState.OnLateUpdateMode()) {
-            currentState.UpdateState();
-        }
+    protected void LateUpdate() {
+        currentState.LateUpdateState();
     }
 
     protected void AddState(Estate stateKey, BaseState<Estate> state) {
@@ -51,15 +44,15 @@ public abstract class FiniteStateMachine<Estate> : MonoBehaviour where Estate : 
         currentState.EnterState();
     }
 
-    protected void OnTriggerEnter(Collider other) {
-        currentState.OnTriggerEnter(other);
+    protected void OnTriggerEnter2D(Collider2D other) {
+        currentState.OnTriggerEnter2D(other);
     }
 
-    protected void OnTriggerStay(Collider other) {
-        currentState.OnTriggerStay(other);
+    protected void OnTriggerStay2D(Collider2D other) {
+        currentState.OnTriggerStay2D(other);
     }
 
-    protected void OnTriggerExit(Collider other) {
-        currentState.OnTriggerExit(other);
+    protected void OnTriggerExit2D(Collider2D other) {
+        currentState.OnTriggerExit2D(other);
     }
 }

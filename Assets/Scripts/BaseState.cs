@@ -3,42 +3,19 @@ using UnityEngine;
 
 public abstract class BaseState<Estate> where Estate : Enum {
 
-    private UpdateMode mode;
-
-    public enum UpdateMode {
-        Update,
-        FixedUpdate,
-        LateUpdate
-    }
-
     public Estate stateKey { get; private set; }
 
-    public BaseState(Estate key) : this(key, UpdateMode.Update) { }
-
-    public BaseState(Estate key, UpdateMode mode) {
+    public BaseState(Estate key) {
         stateKey = key;
-        this.mode = mode;
-    }
-
-    public bool OnUpdateMode() {
-        return mode.Equals(UpdateMode.Update);
-    }
-
-    public bool OnFixedUpdateMode()
-    {
-        return mode.Equals(UpdateMode.FixedUpdate);
-    }
-
-    public bool OnLateUpdateMode()
-    {
-        return mode.Equals(UpdateMode.LateUpdate);
     }
 
     public virtual void EnterState() { }
     public virtual void ExitState() { }
-    public abstract void UpdateState();
+    public virtual void UpdateState() { }
+    public virtual void FixedUpdateState() { }
+    public virtual void LateUpdateState() { }
     public abstract Estate GetNextState();
-    public virtual void OnTriggerEnter(Collider other) { }
-    public virtual void OnTriggerStay(Collider other) { }
-    public virtual void OnTriggerExit(Collider other) { }
+    public virtual void OnTriggerEnter2D(Collider2D other) { }
+    public virtual void OnTriggerStay2D(Collider2D other) { }
+    public virtual void OnTriggerExit2D(Collider2D other) { }
 }

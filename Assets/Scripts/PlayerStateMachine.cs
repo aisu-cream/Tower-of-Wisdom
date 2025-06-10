@@ -1,10 +1,11 @@
 using System;
 using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
-using UnityEngine.UIElements;
 
-[RequireComponent(typeof(Rigidbody2D))]
 public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerState> {
+
+    [SerializeField] GameObject sprite;
 
     [SerializeField] PlayerInputData inputData;
     [SerializeField] WalkState walkState;
@@ -12,9 +13,10 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
     [SerializeField] DashState dashState;
     [SerializeField] JumpState jumpState;
 
-    private Rigidbody2D rb;
     private CircleCollider2D col;
-    
+    private Rigidbody2D rb;
+    private float z;
+
     public enum PlayerState {
         Idle,
         Walk,
@@ -32,8 +34,9 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     protected override void Start() {
-        rb = GetComponent<Rigidbody2D>();
         col = GetComponent<CircleCollider2D>();
+        rb = GetComponent<Rigidbody2D>();
+        z = 0;
 
         AddState(PlayerState.Idle, new IdleState(PlayerState.Idle, this));
         AddState(PlayerState.Walk, walkState);
@@ -78,6 +81,7 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
 
     [Serializable]
     private abstract class Movable : BaseState<PlayerState> {
+
         public float targetSpeed = 5;
         public float accelRate = 6;
         public float decelRate = 6;
@@ -86,14 +90,19 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
         protected Vector2 moveForce;
         protected PlayerStateMachine machine;
 
-        public Movable(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey, BaseState<PlayerState>.UpdateMode.FixedUpdate) {
+        protected float posZ = 0;
+
+        public Movable(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey) {
             moveDir = Vector2.zero;
             moveForce = Vector2.zero;
             this.machine = machine;
         }
 
-        protected void Move(float lerpAmount)
-        {
+        public override void LateUpdateState() {
+            machine.sprite.transform.localPosition = Vector3.up * posZ;
+        }
+
+        protected void Move(float lerpAmount) {
             // accelerate player to the target velocity
             moveDir.Set(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             moveDir.Normalize();
@@ -115,6 +124,8 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
 
             moveForce.Set(horForce, vertForce);
             machine.rb.AddForce(moveForce, ForceMode2D.Force);
+
+            Debug.Log(machine.rb.linearVelocity);
         }
     }
 
@@ -122,7 +133,7 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
     private class WalkState : Movable {
         public WalkState(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey, machine) { }
         
-        public override void UpdateState() {
+        public override void FixedUpdateState() {
             Move(1);
         }
 
@@ -142,10 +153,10 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
 
     [Serializable]
     private class RunState : Movable {
+
         public RunState(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey, machine) { }
 
-        public override void UpdateState()
-        {
+        public override void FixedUpdateState() {
             Move(1);
         }
 
@@ -187,14 +198,13 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
             dashTime = 0;
         }
 
-        public override void UpdateState() {
+        public override void FixedUpdateState() {
             Move(dashRunLerpAmount);
             dashTime += Time.fixedDeltaTime;
         }
 
         public override PlayerState GetNextState() {
-            if (dashTime > dashDuration)
-            {
+            if (dashTime > dashDuration) {
                 if (Input.GetKeyDown(machine.inputData.jumpCode))
                     return PlayerState.Jump;
                 else if (!Input.GetKey(machine.inputData.runCode))
@@ -210,58 +220,102 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
     [Serializable]
     private class JumpState : Movable {
 
+        private enum ForceModeZ {
+            Force,
+            Impulse
+        }
+
         public float jumpStrength = 15;
         public float gravity = -9.8f;
-        public LayerMask platformLayer;
 
-        private Vector2 gravityForce;
-        private Vector2 landingPos;
+        [SerializeField] LayerMask platformLayer;
 
-        private bool landed;
+        private bool onGround;
+        private float velZ = 0;
 
-        public JumpState(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey, machine) {
-            gravityForce = new Vector2(0, gravity);
-        }
+        public JumpState(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey, machine) { }
 
         public override void EnterState() {
-            Vector2 jumpImpulse = new Vector2(0, jumpStrength);
+            float jumpImpulse = jumpStrength;
 
-            if (machine.rb.linearVelocity.y < 0)
-                jumpImpulse.y -= machine.rb.linearVelocity.y;
+            if (velZ < 0)
+                jumpImpulse -= velZ;
 
-            machine.rb.AddForce(jumpImpulse, ForceMode2D.Impulse);
-            landingPos = machine.transform.position;
-
-            landed = false;
+            AddForce(jumpImpulse, ForceModeZ.Impulse);
+            onGround = false;
         }
 
-        public override void UpdateState() {
-            landingPos = machine.transform.position;
-
+        public override void FixedUpdateState() {
             Move(1);
 
-            float moveRadius = machine.col.radius + machine.rb.linearVelocity.magnitude * Time.fixedDeltaTime;
-            Collider2D hit = Physics2D.OverlapCircle(landingPos, moveRadius, platformLayer);
+            float moveRadius = machine.col.radius + machine.rb.linearVelocity.magnitude * Time.fixedDeltaTime + 0.1f;
+            RaycastHit2D hit = Physics2D.CircleCast(machine.transform.position, moveRadius, Vector2.zero, 0, platformLayer);
 
-            if (hit != null) {
-                Platform platform = hit.GetComponent<Platform>();
-                if (platform != null && Mathf.Approximately(platform.lowerZ, landingPos.y) && platform.upperZ <= machine.transform.position.y)
-                    landingPos.y = platform.upperZ;
+            if (hit) {
+                bool isMovingToward = Vector2.Dot(hit.normal, machine.rb.linearVelocity) < 0;
+                bool isStationaryAndMovingToward = machine.rb.linearVelocity.magnitude == 0 && Vector2.Dot(hit.normal, moveDir) < 0;
+
+                if (isMovingToward || isStationaryAndMovingToward) {
+                    Platform platform = hit.transform.gameObject.GetComponent<Platform>();
+
+                    if (platform != null && platform.IsLower() && Mathf.Approximately(platform.z, machine.z)) {
+                        Physics2D.IgnoreCollision(machine.col, platform.col);
+
+                        posZ = posZ + machine.z;
+                        machine.z = platform.opposite.z;
+                        posZ = posZ - machine.z;
+
+                        Vector2 pos = machine.transform.position;
+                        pos.y += platform.opposite.z - platform.z;
+                        machine.rb.MovePosition(pos);
+                    }
+                }
             }
 
-            gravityForce.y = gravity;
-            machine.rb.AddForce(gravityForce, ForceMode2D.Force);
+            AddForce(gravity, ForceModeZ.Force);
+            UpdatePositionZ();
+        }
 
-            if (machine.rb.position.y < landingPos.y) {
-                Vector2 playerPos = machine.rb.position;
-                playerPos.y = landingPos.y;
-                machine.rb.position = playerPos;
-                landed = true;
+        private void AddForce(float force, ForceModeZ mode) {
+            if (mode == ForceModeZ.Force)
+                velZ += force * Time.fixedDeltaTime;
+            else
+                velZ += force;
+        }
+
+        private void UpdatePositionZ() {
+            float deltaZ = velZ * Time.fixedDeltaTime;
+
+            if (velZ <= 0 && posZ + deltaZ < 0) {
+                deltaZ = -posZ;
+                onGround = true;
+            }
+
+            posZ += deltaZ;
+        }
+
+        public override void ExitState() {
+            velZ = 0;
+        }
+
+        public override void OnTriggerExit2D(Collider2D other) {
+            Platform platform = other.GetComponent<Platform>();
+
+            if (platform != null && platform.IsUpper() && Mathf.Approximately(platform.z, machine.z)) {
+                posZ = posZ + machine.z;
+                machine.z = platform.opposite.z;
+                posZ = posZ - machine.z;
+
+                Vector2 pos = machine.transform.position;
+                pos.y += platform.opposite.z - platform.z;
+                machine.rb.MovePosition(pos);
+
+                Physics2D.IgnoreCollision(platform.opposite.col, machine.col, false);
             }
         }
 
         public override PlayerState GetNextState() {
-            if (landed)
+            if (onGround)
                 return PlayerState.Walk;
             else
                 return stateKey;
