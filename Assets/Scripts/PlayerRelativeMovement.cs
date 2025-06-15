@@ -1,11 +1,10 @@
 using System;
-using Unity.VisualScripting;
-using UnityEditor;
 using UnityEngine;
 
-public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerState> {
+public class PlayerRelativeMovement : FiniteStateMachine<PlayerRelativeMovement.PlayerState> {
 
-    [SerializeField] GameObject sprite;
+    [SerializeField] Shadow shadow;
+    [SerializeField] CharacterRigidbody character;
 
     [SerializeField] PlayerInputData inputData;
     [SerializeField] WalkState walkState;
@@ -15,7 +14,6 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
 
     private CircleCollider2D col;
     private Rigidbody2D rb;
-    private float z;
 
     public enum PlayerState {
         Idle,
@@ -25,7 +23,7 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
         Jump
     }
 
-    public PlayerStateMachine() {
+    public PlayerRelativeMovement() {
         walkState = new WalkState(PlayerState.Walk, this);
         runState = new RunState(PlayerState.Run, this);
         dashState = new DashState(PlayerState.Dash, this);
@@ -36,7 +34,6 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
     protected override void Start() {
         col = GetComponent<CircleCollider2D>();
         rb = GetComponent<Rigidbody2D>();
-        z = 0;
 
         AddState(PlayerState.Idle, new IdleState(PlayerState.Idle, this));
         AddState(PlayerState.Walk, walkState);
@@ -51,17 +48,15 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
 
     private class IdleState : BaseState<PlayerState> {
 
-        private PlayerStateMachine machine;
+        private PlayerRelativeMovement machine;
 
-        public IdleState(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey) { 
+        public IdleState(PlayerState stateKey, PlayerRelativeMovement machine) : base(stateKey) { 
             this.machine = machine;
         }
 
         public override void EnterState() {
             machine.rb.linearVelocity = Vector3.zero;
         }
-
-        public override void UpdateState() { }
 
         public override PlayerState GetNextState() {
             if (Input.GetKeyDown(machine.inputData.dashCode))
@@ -88,22 +83,43 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
 
         protected Vector2 moveDir;
         protected Vector2 moveForce;
-        protected PlayerStateMachine machine;
+        protected PlayerRelativeMovement machine;
 
-        protected float posZ = 0;
+        private Collider2D platformHit;
 
-        public Movable(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey) {
+        public Movable(PlayerState stateKey, PlayerRelativeMovement machine) : base(stateKey) {
             moveDir = Vector2.zero;
             moveForce = Vector2.zero;
             this.machine = machine;
         }
 
         public override void LateUpdateState() {
-            machine.sprite.transform.localPosition = Vector3.up * posZ;
+            // ignore platforms lower than the player
+            machine.col.excludeLayers = 0;
+
+            if (machine.character.GetZ() >= 1)
+                machine.col.excludeLayers += 64;
+
+            // detect platform
+            Collider2D hit = Physics2D.OverlapCircle(machine.transform.position, machine.col.radius - 0.01f, machine.col.excludeLayers);
+
+            if (hit) {
+                if (!hit.Equals(platformHit)) {
+                    Platform platform = hit.GetComponent<Platform>();
+                    machine.shadow.MovePosition(platform.Top());
+                    platformHit = hit;
+                }
+            }
+            else {
+                machine.shadow.MovePosition(0);
+                platformHit = null;
+            }
+
+            
         }
 
         protected void Move(float lerpAmount) {
-            // accelerate player to the target velocity
+            // accelerate player towards the target velocity
             moveDir.Set(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             moveDir.Normalize();
 
@@ -124,14 +140,13 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
 
             moveForce.Set(horForce, vertForce);
             machine.rb.AddForce(moveForce, ForceMode2D.Force);
-
-            Debug.Log(machine.rb.linearVelocity);
         }
     }
 
     [Serializable]
     private class WalkState : Movable {
-        public WalkState(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey, machine) { }
+        
+        public WalkState(PlayerState stateKey, PlayerRelativeMovement machine) : base(stateKey, machine) { }
         
         public override void FixedUpdateState() {
             Move(1);
@@ -154,7 +169,7 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
     [Serializable]
     private class RunState : Movable {
 
-        public RunState(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey, machine) { }
+        public RunState(PlayerState stateKey, PlayerRelativeMovement machine) : base(stateKey, machine) { }
 
         public override void FixedUpdateState() {
             Move(1);
@@ -183,7 +198,7 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
         public Vector2 defaultDashDirection = new Vector2(1, 0);
         private float dashTime;
 
-        public DashState(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey, machine) { }
+        public DashState(PlayerState stateKey, PlayerRelativeMovement machine) : base(stateKey, machine) { }
 
         public override void EnterState() {
             Vector2 temp = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
@@ -198,9 +213,13 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
             dashTime = 0;
         }
 
+        public override void UpdateState() {
+            base.UpdateState();
+            dashTime += Time.deltaTime;
+        }
+
         public override void FixedUpdateState() {
             Move(dashRunLerpAmount);
-            dashTime += Time.fixedDeltaTime;
         }
 
         public override PlayerState GetNextState() {
@@ -220,102 +239,25 @@ public class PlayerStateMachine : FiniteStateMachine<PlayerStateMachine.PlayerSt
     [Serializable]
     private class JumpState : Movable {
 
-        private enum ForceModeZ {
-            Force,
-            Impulse
-        }
-
         public float jumpStrength = 15;
-        public float gravity = -9.8f;
 
-        [SerializeField] LayerMask platformLayer;
-
-        private bool onGround;
-        private float velZ = 0;
-
-        public JumpState(PlayerState stateKey, PlayerStateMachine machine) : base(stateKey, machine) { }
+        public JumpState(PlayerState stateKey, PlayerRelativeMovement machine) : base(stateKey, machine) { }
 
         public override void EnterState() {
             float jumpImpulse = jumpStrength;
 
-            if (velZ < 0)
-                jumpImpulse -= velZ;
+            if (machine.character.GetVelocity() < 0)
+                jumpImpulse -= machine.character.GetVelocity();
 
-            AddForce(jumpImpulse, ForceModeZ.Impulse);
-            onGround = false;
+            machine.character.AddForce(jumpImpulse, CharacterRigidbody.ForceModeZ.Impulse);
         }
 
         public override void FixedUpdateState() {
             Move(1);
-
-            float moveRadius = machine.col.radius + machine.rb.linearVelocity.magnitude * Time.fixedDeltaTime + 0.1f;
-            RaycastHit2D hit = Physics2D.CircleCast(machine.transform.position, moveRadius, Vector2.zero, 0, platformLayer);
-
-            if (hit) {
-                bool isMovingToward = Vector2.Dot(hit.normal, machine.rb.linearVelocity) < 0;
-                bool isStationaryAndMovingToward = machine.rb.linearVelocity.magnitude == 0 && Vector2.Dot(hit.normal, moveDir) < 0;
-
-                if (isMovingToward || isStationaryAndMovingToward) {
-                    Platform platform = hit.transform.gameObject.GetComponent<Platform>();
-
-                    if (platform != null && platform.IsLower() && Mathf.Approximately(platform.z, machine.z)) {
-                        Physics2D.IgnoreCollision(machine.col, platform.col);
-
-                        posZ = posZ + machine.z;
-                        machine.z = platform.opposite.z;
-                        posZ = posZ - machine.z;
-
-                        Vector2 pos = machine.transform.position;
-                        pos.y += platform.opposite.z - platform.z;
-                        machine.rb.MovePosition(pos);
-                    }
-                }
-            }
-
-            AddForce(gravity, ForceModeZ.Force);
-            UpdatePositionZ();
-        }
-
-        private void AddForce(float force, ForceModeZ mode) {
-            if (mode == ForceModeZ.Force)
-                velZ += force * Time.fixedDeltaTime;
-            else
-                velZ += force;
-        }
-
-        private void UpdatePositionZ() {
-            float deltaZ = velZ * Time.fixedDeltaTime;
-
-            if (velZ <= 0 && posZ + deltaZ < 0) {
-                deltaZ = -posZ;
-                onGround = true;
-            }
-
-            posZ += deltaZ;
-        }
-
-        public override void ExitState() {
-            velZ = 0;
-        }
-
-        public override void OnTriggerExit2D(Collider2D other) {
-            Platform platform = other.GetComponent<Platform>();
-
-            if (platform != null && platform.IsUpper() && Mathf.Approximately(platform.z, machine.z)) {
-                posZ = posZ + machine.z;
-                machine.z = platform.opposite.z;
-                posZ = posZ - machine.z;
-
-                Vector2 pos = machine.transform.position;
-                pos.y += platform.opposite.z - platform.z;
-                machine.rb.MovePosition(pos);
-
-                Physics2D.IgnoreCollision(platform.opposite.col, machine.col, false);
-            }
         }
 
         public override PlayerState GetNextState() {
-            if (onGround)
+            if (machine.character.OnGround())
                 return PlayerState.Walk;
             else
                 return stateKey;
