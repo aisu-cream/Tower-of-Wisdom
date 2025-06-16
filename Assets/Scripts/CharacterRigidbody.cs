@@ -20,6 +20,14 @@ public class CharacterRigidbody : MonoBehaviour {
     private bool onGround = false;
 
     void Update() {
+        transform.localPosition = Vector2.up * GetZ();
+    }
+
+    void FixedUpdate() {
+        AddForce(gravity * mainBody.mass, ForceModeZ.Force);
+    }
+
+    public float GetZ() {
         onGround = false;
 
         if (vel <= 0 && z <= shadow.GetZ()) {
@@ -28,14 +36,6 @@ public class CharacterRigidbody : MonoBehaviour {
             onGround = true;
         }
 
-        transform.localPosition = Vector2.up * z;
-    }
-
-    void FixedUpdate() {
-        AddForce(gravity * mainBody.mass, ForceModeZ.Force);
-    }
-
-    public float GetZ() {
         return z;
     }
 

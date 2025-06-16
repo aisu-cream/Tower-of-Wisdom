@@ -1,19 +1,25 @@
 using System;
+using Unity.Cinemachine;
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody2D))]
 public class PlayerRelativeMovement : FiniteStateMachine<PlayerRelativeMovement.PlayerState> {
 
     [SerializeField] Shadow shadow;
     [SerializeField] CharacterRigidbody character;
 
     [SerializeField] PlayerInputData inputData;
+
+    [SerializeField] Collider2D col;
+    [SerializeField] Collider2D trigCol;
+
     [SerializeField] WalkState walkState;
     [SerializeField] RunState runState;
     [SerializeField] DashState dashState;
     [SerializeField] JumpState jumpState;
 
-    private CircleCollider2D col;
     private Rigidbody2D rb;
+    private CinemachineCamera cinemachine;
 
     public enum PlayerState {
         Idle,
@@ -32,8 +38,8 @@ public class PlayerRelativeMovement : FiniteStateMachine<PlayerRelativeMovement.
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     protected override void Start() {
-        col = GetComponent<CircleCollider2D>();
         rb = GetComponent<Rigidbody2D>();
+        cinemachine = FindAnyObjectByType<CinemachineCamera>();
 
         AddState(PlayerState.Idle, new IdleState(PlayerState.Idle, this));
         AddState(PlayerState.Walk, walkState);
@@ -83,9 +89,11 @@ public class PlayerRelativeMovement : FiniteStateMachine<PlayerRelativeMovement.
 
         protected Vector2 moveDir;
         protected Vector2 moveForce;
+
         protected PlayerRelativeMovement machine;
 
-        private Collider2D platformHit;
+        private static bool onPlatform = false;
+        private static float shadowHeight = float.MinValue;
 
         public Movable(PlayerState stateKey, PlayerRelativeMovement machine) : base(stateKey) {
             moveDir = Vector2.zero;
@@ -93,29 +101,32 @@ public class PlayerRelativeMovement : FiniteStateMachine<PlayerRelativeMovement.
             this.machine = machine;
         }
 
-        public override void LateUpdateState() {
-            // ignore platforms lower than the player
+        public override void UpdateState() {
             machine.col.excludeLayers = 0;
 
+            if (machine.character.GetZ() >= 2)
+                machine.col.excludeLayers += 128;
             if (machine.character.GetZ() >= 1)
                 machine.col.excludeLayers += 64;
 
-            // detect platform
-            Collider2D hit = Physics2D.OverlapCircle(machine.transform.position, machine.col.radius - 0.01f, machine.col.excludeLayers);
+            machine.trigCol.excludeLayers = ~machine.col.excludeLayers;
 
-            if (hit) {
-                if (!hit.Equals(platformHit)) {
-                    Platform platform = hit.GetComponent<Platform>();
-                    machine.shadow.MovePosition(platform.Top());
-                    platformHit = hit;
-                }
-            }
-            else {
-                machine.shadow.MovePosition(0);
-                platformHit = null;
-            }
+            machine.shadow.MovePosition(onPlatform ? shadowHeight : 0);
+        }
 
-            
+        public override void FixedUpdateState() {
+            shadowHeight = float.MinValue;
+            onPlatform = false;
+        }
+
+        public override void OnTriggerStay2D(Collider2D other) {
+            Platform platform = other.GetComponent<Platform>();
+
+            if (platform != null) {
+                onPlatform = true;
+                if (shadowHeight < platform.Top())
+                    shadowHeight = platform.Top();
+            }
         }
 
         protected void Move(float lerpAmount) {
@@ -149,6 +160,7 @@ public class PlayerRelativeMovement : FiniteStateMachine<PlayerRelativeMovement.
         public WalkState(PlayerState stateKey, PlayerRelativeMovement machine) : base(stateKey, machine) { }
         
         public override void FixedUpdateState() {
+            base.FixedUpdateState();
             Move(1);
         }
 
@@ -172,6 +184,7 @@ public class PlayerRelativeMovement : FiniteStateMachine<PlayerRelativeMovement.
         public RunState(PlayerState stateKey, PlayerRelativeMovement machine) : base(stateKey, machine) { }
 
         public override void FixedUpdateState() {
+            base.FixedUpdateState();
             Move(1);
         }
 
@@ -206,20 +219,17 @@ public class PlayerRelativeMovement : FiniteStateMachine<PlayerRelativeMovement.
             if (temp.magnitude == 0)
                 temp = defaultDashDirection;
 
-            temp = temp.normalized;
+            temp.Normalize();
             temp = temp * dashSpeed - machine.rb.linearVelocity;
 
             machine.rb.AddForce(temp, ForceMode2D.Impulse);
             dashTime = 0;
         }
 
-        public override void UpdateState() {
-            base.UpdateState();
-            dashTime += Time.deltaTime;
-        }
-
         public override void FixedUpdateState() {
+            base.FixedUpdateState();
             Move(dashRunLerpAmount);
+            dashTime += Time.fixedDeltaTime;
         }
 
         public override PlayerState GetNextState() {
@@ -253,6 +263,7 @@ public class PlayerRelativeMovement : FiniteStateMachine<PlayerRelativeMovement.
         }
 
         public override void FixedUpdateState() {
+            base.FixedUpdateState();
             Move(1);
         }
 
