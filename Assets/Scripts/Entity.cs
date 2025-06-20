@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody2D))]
 public abstract class Entity<Estate> : FiniteStateMachine<Estate> where Estate : Enum {
 
     [Header("Physics Components")]

@@ -435,7 +435,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 885e77f8be1b35c4c9391fe65684f88d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  shadowScaleIntensity: 0.3
+  shadowScaleIntensity: 0.38
 --- !u!1 &211970371
 GameObject:
   m_ObjectHideFlags: 0
@@ -1140,11 +1140,11 @@ MonoBehaviour:
     defaultDashDirection: {x: 1, y: 0}
   jumpState:
     jumpStrength: 13
-    jumpBufferTime: 0.05
+    jumpBufferTime: 0.1
     jumpRunLerpAmount: 0.6
   fallState:
     coyoteTime: 0.12
-    jumpBufferTime: 0.07
+    jumpBufferTime: 0.1
     fallRunLerpAmount: 0.6
 --- !u!114 &620805200
 MonoBehaviour:

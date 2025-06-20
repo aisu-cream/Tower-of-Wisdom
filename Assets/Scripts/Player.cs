@@ -1,17 +1,13 @@
 using System;
 using Unity.Cinemachine;
-using UnityEditor;
-using UnityEditor.Rendering;
 using UnityEngine;
 
-// will be replaced with Entity soon
-[RequireComponent(typeof(Rigidbody2D))]
 public class Player : Entity<Player.PlayerState> {
 
-    [Header("input controller")]
+    [Header("Input Controller")]
     [SerializeField] PlayerInputData inputData;
 
-    [Header("state controller")]
+    [Header("State Controller")]
     [SerializeField] WalkState walkState;
     [SerializeField] RunState runState;
     [SerializeField] DashState dashState;
@@ -228,12 +224,8 @@ public class Player : Entity<Player.PlayerState> {
 
             orignialCinemachineDampingY = player.cinemachinePositionComposer.Damping.y;
             player.cinemachinePositionComposer.Damping.y = 3;
-        }
 
-        public override void UpdateState() {
-            base.UpdateState();
-            if (Input.GetKeyDown(player.inputData.jumpCode))
-                bufferInputTime = Time.time;
+            bufferInputTime = -jumpBufferTime;
         }
 
         public override void ExitState() {
@@ -246,8 +238,11 @@ public class Player : Entity<Player.PlayerState> {
         }
 
         public override PlayerState GetNextState() {
+            if (Input.GetKeyDown(player.inputData.jumpCode))
+                bufferInputTime = Time.time;
+
             if (player.character.OnGround()) {
-                if (Time.time - bufferInputTime <= jumpBufferTime)
+                if (Time.time - bufferInputTime < jumpBufferTime)
                     EnterState();
                 else if (Input.GetKey(player.inputData.runCode))
                     return PlayerState.Run;
@@ -279,30 +274,28 @@ public class Player : Entity<Player.PlayerState> {
             canEnterCoyoteTime = true;
         }
 
-        public override void UpdateState() {
-            base.UpdateState();
-            if (canEnterCoyoteTime && Time.time - fallStartTime <= coyoteTime && Input.GetKeyDown(player.inputData.jumpCode))
-                player.TransitionToState(PlayerState.Jump);
-            if (Input.GetKeyDown(player.inputData.jumpCode))
-                bufferInputTime = Time.time;
-        }
-
         public override void FixedUpdateState() {
             base.FixedUpdateState();
             Float(player.walkState.targetSpeed, player.walkState.accelRate, player.walkState.decelRate, fallRunLerpAmount);
         }
 
         public override PlayerState GetNextState() {
+            if (Input.GetKeyDown(player.inputData.jumpCode)) {
+                if (canEnterCoyoteTime && Time.time - fallStartTime < coyoteTime)
+                    return PlayerState.Jump;
+                bufferInputTime = Time.time;
+            }
+
             if (player.character.OnGround()) {
-                if (Time.time - bufferInputTime <= jumpBufferTime)
+                if (Time.time - bufferInputTime < jumpBufferTime)
                     return PlayerState.Jump;
                 else if (Input.GetKey(player.inputData.runCode))
                     return PlayerState.Run;
                 else
                     return PlayerState.Walk;
             }
-            else
-                return stateKey;
+            
+            return stateKey;
         }
 
         public void DisableCoyoteTime() {
