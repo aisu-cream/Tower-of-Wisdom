@@ -18,6 +18,9 @@ public class AStarManager : MonoBehaviour {
      * or return null otherwise.
      */
     public List<AStarNode> GeneratePath(AStarNode start, AStarNode end) {
+        if (start == null || end == null)
+            return null;
+
         PriorityQueue<AStarNode, float> queue = new PriorityQueue<AStarNode, float>();
 
         foreach (AStarNode node in nodes)
