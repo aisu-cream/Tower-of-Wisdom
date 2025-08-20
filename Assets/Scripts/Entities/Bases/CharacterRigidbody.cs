@@ -3,11 +3,6 @@ using UnityEngine;
 // class that handles fake z axis of character (entity)
 public class CharacterRigidbody : MonoBehaviour {
 
-    public enum ForceModeZ {
-        Force,
-        Impulse
-    }
-
     [SerializeField] Rigidbody2D mainBody;
     [SerializeField] Shadow shadow;
 
@@ -24,8 +19,8 @@ public class CharacterRigidbody : MonoBehaviour {
     }
 
     void FixedUpdate() {        
-        AddForce(-Mathf.Sign(vel) * vel * vel * DragConst(), ForceModeZ.Force);
-        AddForce(-gravity * mainBody.mass, ForceModeZ.Force);
+        AddForce(-Mathf.Sign(vel) * vel * vel * DragConst(), ForceMode2D.Force);
+        AddForce(-gravity * mainBody.mass, ForceMode2D.Force);
     }
 
     /// <summary>
@@ -54,8 +49,10 @@ public class CharacterRigidbody : MonoBehaviour {
         return GetVelocity() <= 0 && z <= shadow.GetZ();
     }
 
-    public void AddForce(float force, ForceModeZ mode) {
-        if (mode == ForceModeZ.Force)
+    // Does the same thing as the rigidbody addforce
+    // Takes ForceMode2D rather than custom ForceMode for code conciseness
+    public void AddForce(float force, ForceMode2D mode) {
+        if (mode == ForceMode2D.Force)
             force *= Time.fixedDeltaTime;
 
         float deltaVel = force / mainBody.mass;

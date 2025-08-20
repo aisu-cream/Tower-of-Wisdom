@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
-public abstract class Entity<Estate> : FiniteStateMachine<Estate> where Estate : Enum {
+public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where Estate : Enum {
 
     [Header("Physics Components")]
     [SerializeField] protected Shadow shadow;
@@ -17,8 +17,10 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate> where Estate :
     [SerializeField] private float startingHealth;
     protected float health;
 
+    [Header("Private Variables")]
     private bool onPlatform = false;
     private float shadowHeight = float.MinValue;
+    private Weapon weapon;
 
     void Awake() {
         rb = GetComponent<Rigidbody2D>();
@@ -30,69 +32,95 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate> where Estate :
             health = startingHealth;
     }
 
-    public float GetHealth() {
+    public virtual float GetHealth() {
         return health;
     }
 
-    public void TakeDamage(float damage) {
-        health -= damage;
-        // die
+    public virtual Vector3 GetPosition() {
+        return new Vector3(transform.position.x, transform.position.y, character.GetZ());
     }
 
-    public virtual void GetPushed(Vector2 impulse) { }
+    public virtual void TakeDamage(float damage) {
+        health -= damage;
+        if (health <= 0)
+            Destroy(gameObject);
+    }
 
-    protected abstract class StandableOnPlatform : BaseState<Estate> {
+    public virtual void HoldWeapon(Weapon weapon) {
+        if (weapon == null)
+            throw new NotSupportedException();
+        weapon.SetHolder(this);
+        this.weapon = weapon;
+    }
 
-        protected Entity<Estate> entity;
-
-        public StandableOnPlatform(Estate stateKey, Entity<Estate> entity) : base(stateKey) {
-            this.entity = entity;
+    public void DropWeapon() {
+        if (weapon != null) {
+            weapon.SetHolder(null);
+            weapon = null;
         }
+    }
 
-        public override void UpdateState() {
-            entity.col.excludeLayers = 0;
+    public virtual void AddForce(Vector2 force, float zForce, ForceMode2D forceMode) {
+        rb.AddForce(force, forceMode);
+        character.AddForce(zForce, forceMode);
+    }
 
-            if (entity.character.GetZ() >= 2)
-                entity.col.excludeLayers = 192;
-            else if (entity.character.GetZ() >= 1)
-                entity.col.excludeLayers = 64;
+    public void SetWeapon(Weapon weapon) {
+        this.weapon = weapon;
+    }
 
-            entity.platformDetectCol.excludeLayers = ~entity.col.excludeLayers;
+    public Weapon GetWeapon() {
+        return weapon;
+    }
 
-            // update shadow height wrt the current tallest platform height
-            entity.shadow.MovePosition(entity.onPlatform ? entity.shadowHeight : 0);
-            entity.shadow.Scale(1 / (1 + entity.character.GetZ() - entity.shadow.GetZ()));
-        }
+    // Common use case is adding Transition to State
+    public virtual void GetPushed(Vector2 impulse, float zImpulse) { 
+        AddForce(impulse, zImpulse, ForceMode2D.Impulse);
+    }
 
-        public override void FixedUpdateState() {
-            entity.shadowHeight = float.MinValue;
-            entity.onPlatform = false;
-        }
+    private void SetPlatformLayers() {
+        col.excludeLayers = 0;
 
-        public override void OnTriggerStay2D(Collider2D other) {
-            Platform platform = other.GetComponent<Platform>();
+        if (character.GetZ() >= 2)
+            col.excludeLayers = 192;
+        else if (character.GetZ() >= 1)
+            col.excludeLayers = 64;
 
-            if (platform != null) {
-                entity.onPlatform = true;
-                if (entity.shadowHeight < platform.Top())
-                    entity.shadowHeight = platform.Top();
-            }
-        }
+        platformDetectCol.excludeLayers = ~col.excludeLayers;
+
+        // update shadow height wrt the current tallest platform height
+        shadow.MovePosition(onPlatform ? shadowHeight : 0);
+        shadow.Scale(1 / (1 + character.GetZ() - shadow.GetZ()));
+    }
+
+    private void ResetShadow() {
+        shadowHeight = float.MinValue;
+        onPlatform = false;
     }
 
     [Serializable]
-    protected abstract class MoveState : StandableOnPlatform {
+    protected abstract class MoveState<T> : BaseState<Estate> where T : Entity<Estate> {
 
         public float targetSpeed = 5;
         public float accelRate = 6;
         public float decelRate = 6;
 
+        protected T entity;
         protected Vector2 moveDir;
         protected Vector2 moveForce;
 
-        public MoveState(Estate stateKey, Entity<Estate> entity) : base(stateKey, entity) {
+        public MoveState(Estate stateKey, T entity) : base(stateKey) {
+            this.entity = entity;
             moveDir = Vector2.zero;
             moveForce = Vector2.zero;
+        }
+
+        public override void UpdateState() {
+            entity.SetPlatformLayers();
+        }
+
+        public override void FixedUpdateState() {
+            entity.ResetShadow();
         }
 
         // accelerate player towards the target velocity
@@ -111,16 +139,36 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate> where Estate :
         protected void Move(float x, float y, float lerpAmount) {
             Move(new Vector2(x, y), lerpAmount);
         }
+        
+        public override void OnTriggerStay2D(Collider2D other) {
+            Platform platform = other.GetComponent<Platform>();
+
+            if (platform != null) {
+                entity.onPlatform = true;
+                if (entity.shadowHeight < platform.Top())
+                    entity.shadowHeight = platform.Top();
+            }
+        }
     }
 
-    protected abstract class FloatState : StandableOnPlatform {
-        
+    protected abstract class FloatState<T> : BaseState<Estate> where T : Entity<Estate> {
+
+        protected T entity;
         protected Vector2 moveDir;
         protected Vector2 moveForce;
 
-        public FloatState(Estate stateKey, Entity<Estate> entity) : base(stateKey, entity) {
+        public FloatState(Estate stateKey, T entity) : base(stateKey) {
+            this.entity = entity;
             moveDir = Vector2.zero;
             moveForce = Vector2.zero;
+        }
+
+        public override void UpdateState() {
+            entity.SetPlatformLayers();
+        }
+
+        public override void FixedUpdateState() {
+            entity.ResetShadow();
         }
 
         /** 
@@ -161,6 +209,16 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate> where Estate :
             float walkSpeed = selfMovableSpeedLimit;
             float currSpeed = entity.rb.linearVelocity.magnitude;
             return walkSpeed * currSpeed / Mathf.Sqrt(Mathf.Pow(currSpeed * Mathf.Sin(deltaAngle), 2) + Mathf.Pow(walkSpeed * Mathf.Cos(deltaAngle), 2));
+        }
+        
+        public override void OnTriggerStay2D(Collider2D other) {
+            Platform platform = other.GetComponent<Platform>();
+
+            if (platform != null) {
+                entity.onPlatform = true;
+                if (entity.shadowHeight < platform.Top())
+                    entity.shadowHeight = platform.Top();
+            }
         }
     }
 }

@@ -13,13 +13,14 @@ public abstract class FiniteStateMachine<Estate> : MonoBehaviour where Estate : 
     }
 
     // Update is called once per frame
-    protected void Update() {
+    protected virtual void Update() {
         Estate nextStateKey = currentState.GetNextState();
 
         if (!nextStateKey.Equals(currentState.stateKey))
             TransitionToState(nextStateKey);
 
         currentState.UpdateState();
+        Debug.Log(currentState);
     }
 
     protected void FixedUpdate() {
