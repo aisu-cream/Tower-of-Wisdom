@@ -218,6 +218,7 @@ GameObject:
   - component: {fileID: 6297249829055297904}
   - component: {fileID: 6236822617884970081}
   - component: {fileID: 2122061878541547359}
+  - component: {fileID: 4054835139379504537}
   m_Layer: 0
   m_Name: Sword_Dummy
   m_TagString: Untagged
@@ -256,6 +257,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   <damage>k__BackingField: 5
   pushPower: 5
+  slashEffect: {fileID: 1867945026109374256, guid: f454cd1dac5adf64ca98bae5281dd27e, type: 3}
 --- !u!95 &2122061878541547359
 Animator:
   serializedVersion: 7
@@ -278,6 +280,18 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!210 &4054835139379504537
+SortingGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5736849073280732533}
+  m_Enabled: 1
+  m_SortingLayerID: 1518111209
+  m_SortingLayer: 2
+  m_SortingOrder: 0
+  m_SortAtRoot: 0
 --- !u!1 &5859492210004405975
 GameObject:
   m_ObjectHideFlags: 0

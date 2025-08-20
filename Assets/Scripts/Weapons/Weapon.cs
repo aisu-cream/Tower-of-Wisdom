@@ -18,7 +18,7 @@ public abstract class Weapon : MonoBehaviour {
      * Wield this weapon
      * Returns the time this action finishes
      */
-    public virtual float Wield() {
+    public virtual void Wield() {
         throw new NotSupportedException();
     }
 
@@ -26,7 +26,7 @@ public abstract class Weapon : MonoBehaviour {
      * Throw this weapon; Physical displacement of the weapon
      * Returns the time this action finishes
      */
-    public virtual float Throw() {
+    public virtual void Throw() {
         throw new NotSupportedException();
     }
 
@@ -34,7 +34,7 @@ public abstract class Weapon : MonoBehaviour {
      * Charges the weapon
      * Returns the time this action finishes
      */
-    public virtual float StartCharge() {
+    public virtual void StartCharge() {
         throw new NotSupportedException();
     }
 
@@ -42,7 +42,7 @@ public abstract class Weapon : MonoBehaviour {
      * Release the charge; Requires StartCharge method to be implemented/used
      * Returns the time this action finishes
      */
-    public virtual float Release() {
+    public virtual void Release() {
         throw new NotSupportedException();
     }
 }

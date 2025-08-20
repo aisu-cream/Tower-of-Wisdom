@@ -1,9 +1,12 @@
+#nullable enable
+
 using UnityEngine;
 
 [RequireComponent(typeof(Animator))]
 public class Sword : Weapon {
 
     [Min(0)] public float pushPower = 5;
+    [SerializeField] GameObject? slashEffect;
 
     private Animator animator;
     private readonly int slashHash = Animator.StringToHash("Base Layer.Dummy Slash");
@@ -24,10 +27,14 @@ public class Sword : Weapon {
         }
     }
 
-    public override float Wield() {
+    public override void Wield() {
         animator.Play(slashHash, 0, 0);
-        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-        return Time.time + stateInfo.length / stateInfo.speed;
+    }
+
+    public void CreateSlashEffect() {
+
+        GameObject? effect = Instantiate(slashEffect, transform.position + transform.up * 0.75f, transform.rotation);
+        effect?.transform.SetParent(transform);
     }
 
     public override void EndAction() {

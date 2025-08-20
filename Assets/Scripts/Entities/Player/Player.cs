@@ -62,7 +62,7 @@ public class Player : Entity<Player.PlayerState> {
     }
 
     protected override void Update() {
-        if (GetWeapon() != null && Input.GetMouseButtonDown(0))
+        if (GetWeapon() != null && Input.GetKeyDown(inputData.wieldCode))
             TransitionToState(PlayerState.Wield);
         base.Update();
     }
@@ -341,12 +341,14 @@ public class Player : Entity<Player.PlayerState> {
     [Serializable]
     private class WieldState : MoveState<Player> {
 
-        private float endTime = -1;
+        public float duration = 0.5f;
+        private float startTime = -1;
 
         public WieldState(PlayerState stateKey, Player entity) : base(stateKey, entity) { }
 
         public override void EnterState() {
-            endTime = entity.GetWeapon().Wield();
+            entity.GetWeapon().Wield();
+            startTime = Time.time;
         }
 
         public override void FixedUpdateState() { 
@@ -359,7 +361,7 @@ public class Player : Entity<Player.PlayerState> {
         }
 
         public override PlayerState GetNextState() {
-            if (endTime <= Time.time) { 
+            if (startTime + duration <= Time.time) { 
                 if (moveDir.magnitude == 0 && entity.rb.linearVelocity.magnitude == 0)
                     return PlayerState.Idle;
                 else

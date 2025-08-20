@@ -1050,6 +1050,7 @@ GameObject:
   - component: {fileID: 620805198}
   - component: {fileID: 620805200}
   - component: {fileID: 620805199}
+  - component: {fileID: 620805205}
   - component: {fileID: 620805201}
   - component: {fileID: 620805203}
   - component: {fileID: 620805202}
@@ -1157,6 +1158,7 @@ MonoBehaviour:
     targetSpeed: 5
     accelRate: 6
     decelRate: 6
+    duration: 0.5
   _debugPurposeWeaponHold: {fileID: 1459614992}
 --- !u!114 &620805200
 MonoBehaviour:
@@ -1173,6 +1175,7 @@ MonoBehaviour:
   runCode: 304
   dashCode: 101
   jumpCode: 32
+  wieldCode: 323
 --- !u!210 &620805201
 SortingGroup:
   m_ObjectHideFlags: 0
@@ -1299,6 +1302,19 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &620805205
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 620805194}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e146da49558738c4b806a581a441b490, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 1596966151}
 --- !u!1 &704135990
 GameObject:
   m_ObjectHideFlags: 0
@@ -2373,6 +2389,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2947068120033681638, guid: 38cd655b983f7074081778dd474f843e, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4054835139379504537, guid: 38cd655b983f7074081778dd474f843e, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5736849073280732533, guid: 38cd655b983f7074081778dd474f843e, type: 3}
