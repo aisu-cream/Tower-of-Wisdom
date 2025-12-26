@@ -138,103 +138,92 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
         AddForce(impulse, ForceMode.Impulse);
     }
 
-    [Serializable]
-    protected abstract class MoveState<T> : BaseState<Estate> where T : Entity<Estate> {
+    // accelerate player towards the target velocity
+    protected void Move(Vector2 dir, float targetSpeed, float accelRate, float decelRate, float lerpAmount) {
+        // rotate the dir vector to xz plane
+        moveDir = new Vector3(dir.x, 0, dir.y);
 
-        public float targetSpeed = 5;
-        public float accelRate = 6;
-        public float decelRate = 6;
+        // change the facing dir
+        if (moveDir.magnitude != 0)
+            facingDir = moveDir;
 
-        protected T entity;
+        moveDir.Normalize();
 
-        public MoveState(Estate stateKey, T entity) : base(stateKey) {
-            this.entity = entity;
+        Vector3 angledDir;
+        Vector3 currentVel;
+
+        // angle the move direction based on the angle of the currently standing surface
+        if (isGrounded) {
+            angledDir = Vector3.ProjectOnPlane(moveDir, surfaceHit.normal).normalized;
+            currentVel = Vector3.ProjectOnPlane(GetVelocity(), surfaceHit.normal);
+        }
+        else {
+            angledDir = moveDir;
+            currentVel = Vector3.ProjectOnPlane(GetVelocity(), Vector3.up);
         }
 
-        // accelerate player towards the target velocity
-        protected void Move(Vector2 dir, float lerpAmount) {
-            // rotate the dir vector to xz plane
-            entity.moveDir = new Vector3(dir.x, 0, dir.y);
+        // calculate the force needed
+        Vector3 targetVel = Vector3.Lerp(currentVel, angledDir * targetSpeed, lerpAmount);
+        Vector3 moveForce = targetVel - currentVel;
+        moveForce *= Vector3.Dot(angledDir, currentVel) > 0 ? accelRate : decelRate;
 
-            // change the facing dir
-            if (entity.moveDir.magnitude != 0)
-                entity.facingDir = entity.moveDir;
-
-            entity.moveDir.Normalize();
-
-            Vector3 angledDir;
-            Vector3 currentVel;
-
-            // angle the move direction based on the angle of the currently standing surface
-            if (entity.isGrounded) {
-                angledDir = Vector3.ProjectOnPlane(entity.moveDir, entity.surfaceHit.normal).normalized;
-                currentVel = Vector3.ProjectOnPlane(entity.GetVelocity(), entity.surfaceHit.normal);
-            }
-            else {
-                angledDir = entity.moveDir;
-                currentVel = Vector3.ProjectOnPlane(entity.GetVelocity(), Vector3.up);
-            }
-
-            // calculate the force needed
-            Vector3 targetVel = Vector3.Lerp(currentVel, angledDir * targetSpeed, lerpAmount);
-            Vector3 moveForce = targetVel - currentVel;
-            moveForce *= Vector3.Dot(angledDir, currentVel) > 0 ? accelRate : decelRate;
-
-            // apply the force
-            entity.rb.AddForce(moveForce, ForceMode.Force);
-        }
-
-        protected void Move(float x, float z, float lerpAmount) {
-            Move(new Vector2(x, z), lerpAmount);
-        }
+        // apply the force
+        rb.AddForce(moveForce, ForceMode.Force);
     }
 
-    protected abstract class FloatState<T> : BaseState<Estate> where T : Entity<Estate> {
+    protected void Move(float x, float z, float targetSpeed, float accelRate, float decelRate, float lerpAmount) {
+        Move(new Vector2(x, z), targetSpeed, accelRate, decelRate, lerpAmount);
+    }
 
-        protected T entity;
+    /** 
+        * maintain the velocity if current velocity and the desired direction to move are the same. Otherwise, decrease the velocity towards the target velocity
+        * in general, use the entity's walk speed, accel rate, and decel rate as the three corresponding inputs
+        */
+    protected void Float(Vector2 dir, float targetSpeed, float accelRate, float decelRate, float lerpAmount) {
+        // rotate the dir vector to xz plane
+        moveDir = new Vector3(dir.x, 0, dir.y);
+        moveDir.Normalize();
 
-        public FloatState(Estate stateKey, T entity) : base(stateKey) {
-            this.entity = entity;
-        }
+        // change the facing dir
+        if (moveDir.magnitude != 0)
+            facingDir = moveDir;
 
-        /** 
-         * maintain the velocity if current velocity and the desired direction to move are the same. Otherwise, decrease the velocity towards the self movable speed limit
-         * in general, use the entity's walk speed, accel rate, and decel rate as the three corresponding inputs
-         */
-        protected void Float(Vector2 dir, float selfMovableSpeedLimit, float accelRate, float decelRate, float lerpAmount) {
-            // rotate the dir vector to xz plane
-            entity.moveDir = new Vector3(dir.x, 0, dir.y);
-            entity.moveDir.Normalize();
+        // check current velocity and direction of input
+        Vector3 currVelocity = GetHorizontalVelocity();
+        float currSpeed = currVelocity.magnitude;
+        bool movingInIdenticalDir = Vector3.Dot(currVelocity, moveDir) > 0;
 
-            // change the facing dir
-            if (entity.moveDir.magnitude != 0)
-                entity.facingDir = entity.moveDir;
+        // calculate the target velocity
+        Vector3 targetVel = moveDir;
+        targetVel *= (currSpeed <= targetSpeed || !movingInIdenticalDir) ? targetSpeed : CalculateElipticSpeed(Vector3.Angle(currVelocity, moveDir), currSpeed, targetSpeed);
+        targetVel = Vector3.Lerp(currVelocity, targetVel, lerpAmount);
 
-            // check current velocity and direction of input
-            Vector3 currVelocity = entity.GetHorizontalVelocity();
-            float currSpeed = currVelocity.magnitude;
-            bool movingInIdenticalDir = Vector3.Dot(currVelocity, entity.moveDir) > 0;
+        // calculate the force needed to reach the desired velocity
+        Vector3 moveForce = targetVel - currVelocity;
+        moveForce *= movingInIdenticalDir ? accelRate : decelRate;
 
-            // calculate the target velocity
-            Vector3 targetVel = entity.moveDir;
-            targetVel *= (currSpeed <= selfMovableSpeedLimit || !movingInIdenticalDir) ? selfMovableSpeedLimit : CalculateElipticSpeed(Vector3.Angle(currVelocity, entity.moveDir), currSpeed, selfMovableSpeedLimit);
-            targetVel = Vector3.Lerp(currVelocity, targetVel, lerpAmount);
+        // apply the force
+        rb.AddForce(moveForce, ForceMode.Force);
+    }
 
-            // calculate the force needed to reach the desired velocity
-            Vector3 moveForce = targetVel - currVelocity;
-            moveForce *= movingInIdenticalDir ? accelRate : decelRate;
+    protected void Float(float x, float z, float selfMovableSpeedLimit, float accelRate, float decelRate, float lerpAmount) {
+        Float(new Vector2(x, z), selfMovableSpeedLimit, accelRate, decelRate, lerpAmount);
+    }
 
-            // apply the force
-            entity.rb.AddForce(moveForce, ForceMode.Force);
-        }
+    private float CalculateElipticSpeed(float deltaAngle, float currSpeed, float selfMovableSpeedLimit) {
+        float walkSpeed = selfMovableSpeedLimit;
+        return walkSpeed * currSpeed / Mathf.Sqrt(Mathf.Pow(currSpeed * Mathf.Sin(deltaAngle), 2) + Mathf.Pow(walkSpeed * Mathf.Cos(deltaAngle), 2));
+    }
 
-        protected void Float(float x, float z, float selfMovableSpeedLimit, float accelRate, float decelRate, float lerpAmount) {
-            Float(new Vector2(x, z), selfMovableSpeedLimit, accelRate, decelRate, lerpAmount);
-        }
+    protected void Jump(float jumpStrength) {
+        float jumpImpulse = jumpStrength;
 
-        private float CalculateElipticSpeed(float deltaAngle, float currSpeed, float selfMovableSpeedLimit) {
-            float walkSpeed = selfMovableSpeedLimit;
-            return walkSpeed * currSpeed / Mathf.Sqrt(Mathf.Pow(currSpeed * Mathf.Sin(deltaAngle), 2) + Mathf.Pow(walkSpeed * Mathf.Cos(deltaAngle), 2));
-        }
+        if (GetVelocity().y < 0)
+            jumpImpulse -= GetVelocity().y;
+
+        AddForce(Vector3.up * jumpImpulse, ForceMode.Impulse);
+
+        DisableGroundCheckFor(0.05f);
+        isGrounded = false;
     }
 }

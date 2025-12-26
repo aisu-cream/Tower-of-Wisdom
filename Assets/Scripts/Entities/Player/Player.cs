@@ -70,12 +70,17 @@ public class Player : Entity<Player.PlayerState> {
     }
 
     [Serializable]
-    private class IdleState : MoveState<Player> {
+    private class IdleState : BaseState<PlayerState> {
 
-        public IdleState(PlayerState stateKey, Player entity) : base(stateKey, entity) { }
+        [Min(0)] public float decelRate;
+        [Range(0, 1)] public float idleLerpAmount = 0.5f;
+
+        private Player entity;
+
+        public IdleState(PlayerState stateKey, Player entity) : base(stateKey) { this.entity = entity; }
 
         public override void FixedUpdateState() {
-            Move(Vector2.zero, 0.5f);
+            entity.Move(Vector2.zero, 0, 0, decelRate, idleLerpAmount);
         }
 
         public override PlayerState GetNextState() {
@@ -97,12 +102,18 @@ public class Player : Entity<Player.PlayerState> {
     }
 
     [Serializable]
-    private class WalkState : MoveState<Player> {
-        
-        public WalkState(PlayerState stateKey, Player entity) : base(stateKey, entity) { }
+    private class WalkState : BaseState<PlayerState> {
+
+        [Min(0)] public float targetSpeed = 5;
+        [Min(0)] public float accelRate = 12;
+        [Min(0)] public float decelRate = 12;
+
+        private Player entity;
+
+        public WalkState(PlayerState stateKey, Player entity) : base(stateKey) { this.entity = entity; }
         
         public override void FixedUpdateState() {
-            Move(entity.GetInput(), 1);
+            entity.Move(entity.GetInput(), targetSpeed, accelRate, decelRate, 1);
         }
 
         public override PlayerState GetNextState() {
@@ -122,12 +133,18 @@ public class Player : Entity<Player.PlayerState> {
     }
 
     [Serializable]
-    private class RunState : MoveState<Player> {
+    private class RunState : BaseState<PlayerState> {
 
-        public RunState(PlayerState stateKey, Player entity) : base(stateKey, entity) { }
+        [Min(0)] public float targetSpeed = 8;
+        [Min(0)] public float accelRate = 10;
+        [Min(0)] public float decelRate = 12;
+
+        private Player entity;
+
+        public RunState(PlayerState stateKey, Player entity) : base(stateKey) { this.entity = entity; }
 
         public override void FixedUpdateState() {
-            Move(entity.GetInput(), 1);
+            entity.Move(entity.GetInput(), targetSpeed, accelRate, decelRate, 1);
         }
 
         public override PlayerState GetNextState() {
@@ -147,15 +164,20 @@ public class Player : Entity<Player.PlayerState> {
     }
 
     [Serializable]
-    private class DashState : MoveState<Player> {
+    private class DashState : BaseState<PlayerState> {
 
         [Min(0)] public float dashSpeed = 30;
         [Min(0)] public float dashDuration = 0.3f;
-        [Range(0, 1)] public float dashRunLerpAmount = 0.5f;
+
+        [Min(0)] public float decelRate = 9;
+        [Range(0, 1)] public float dashLerpAmount = 0.5f;
+
         public Vector2 defaultDashDirection = new Vector2(1, 0);
         private float dashTime;
 
-        public DashState(PlayerState stateKey, Player entity) : base(stateKey, entity) { }
+        private Player entity;
+
+        public DashState(PlayerState stateKey, Player entity) : base(stateKey) { this.entity = entity; }
 
         public override void EnterState() {
             Vector3 temp = entity.GetInput();
@@ -175,7 +197,7 @@ public class Player : Entity<Player.PlayerState> {
         }
 
         public override void FixedUpdateState() {
-            Move(entity.GetInput(), dashRunLerpAmount);
+            entity.Move(entity.GetInput(), entity.runState.targetSpeed, decelRate, decelRate, dashLerpAmount);
         }
 
         public override PlayerState GetNextState() {
@@ -197,27 +219,21 @@ public class Player : Entity<Player.PlayerState> {
     }
 
     [Serializable]
-    private class JumpState : FloatState<Player> {
+    private class JumpState : BaseState<PlayerState> {
 
         [Min(0)] public float jumpStrength = 15;
-        [Range(0, 1)] public float jumpRunLerpAmount = 0.6f;
+        [Range(0, 1)] public float jumpLerpAmount = 0.4f;
 
-        public JumpState(PlayerState stateKey, Player entity) : base(stateKey, entity) { }
+        private Player entity;
+
+        public JumpState(PlayerState stateKey, Player entity) : base(stateKey) { this.entity = entity; }
 
         public override void EnterState() {
-            float jumpImpulse = jumpStrength;
-
-            if (entity.GetVelocity().y < 0)
-                jumpImpulse -= entity.GetVelocity().y;
-
-            entity.AddForce(Vector3.up * jumpImpulse, ForceMode.Impulse);
-
-            entity.DisableGroundCheckFor(0.05f);
-            entity.isGrounded = false;
+            entity.Jump(jumpStrength);
         }
 
         public override void FixedUpdateState() {
-            Float(entity.GetInput(), entity.walkState.targetSpeed, entity.walkState.accelRate, entity.walkState.decelRate, jumpRunLerpAmount);
+            entity.Float(entity.GetInput(), entity.walkState.targetSpeed, entity.walkState.accelRate, entity.walkState.decelRate, jumpLerpAmount);
         }
 
         public override PlayerState GetNextState() {
@@ -237,17 +253,17 @@ public class Player : Entity<Player.PlayerState> {
     }
 
     [Serializable]
-    private class FallState : FloatState<Player> {
+    private class FallState : BaseState<PlayerState> {
 
-        [Min(0)] public float coyoteTime = 0.1f;
-        [Min(0)] public float jumpBufferTime = 0.1f;
-        [Range(0, 1)] public float fallRunLerpAmount = 0.6f;
+        [Min(0)] public float coyoteTime = 0.15f;
+        [Range(0, 1)] public float fallLerpAmount = 0.4f;
 
         private float fallStartTime;
         private bool canEnterCoyoteTime;
-        private bool canEnterJumpCoyoteTime;
 
-        public FallState(PlayerState stateKey, Player entity) : base(stateKey, entity) { }
+        private Player entity;
+
+        public FallState(PlayerState stateKey, Player entity) : base(stateKey) { this.entity = entity; }
 
         public override void EnterState() {
             fallStartTime = Time.time;
@@ -255,7 +271,7 @@ public class Player : Entity<Player.PlayerState> {
         }
 
         public override void FixedUpdateState() {
-            Float(entity.GetInput(), entity.walkState.targetSpeed, entity.walkState.accelRate, entity.walkState.decelRate, fallRunLerpAmount);
+            entity.Float(entity.GetInput(), entity.walkState.targetSpeed, entity.walkState.accelRate, entity.walkState.decelRate, fallLerpAmount);
         }
 
         public override PlayerState GetNextState() {
@@ -285,20 +301,24 @@ public class Player : Entity<Player.PlayerState> {
     }
 
     [Serializable]
-    private class KnockbackState : MoveState<Player> {
+    private class KnockbackState : BaseState<PlayerState> {
 
         [Min(0)] public float knockbackTime = 0.2f;
-        public float knockbackLerpAmount = 0.2f;
+        [Min(0)] public float decelRate;
+        [Range(0, 1)] public float knockbackLerpAmount = 0.2f;
+
         private float knockbackStartTime;
 
-        public KnockbackState(PlayerState stateKey, Player entity) : base(stateKey, entity) { }
+        private Player entity;
+
+        public KnockbackState(PlayerState stateKey, Player entity) : base(stateKey) { this.entity = entity; }
 
         public override void EnterState() {
             knockbackStartTime = Time.time;
         }
 
         public override void FixedUpdateState() {
-            Move(entity.GetInput(), knockbackLerpAmount);
+            entity.Move(entity.GetInput(), 0, 0, decelRate, knockbackLerpAmount);
         }
 
         public override PlayerState GetNextState() {
@@ -313,12 +333,16 @@ public class Player : Entity<Player.PlayerState> {
     }
 
     [Serializable]
-    private class WieldState : MoveState<Player> {
+    private class WieldState : BaseState<PlayerState> {
 
-        public float duration = 0.5f;
+        [Min(0)] public float duration = 0.5f;
+        [Min(0)] public float decelRate = 7;
+
         private float startTime = -1;
 
-        public WieldState(PlayerState stateKey, Player entity) : base(stateKey, entity) { }
+        private Player entity;
+
+        public WieldState(PlayerState stateKey, Player entity) : base(stateKey) { this.entity = entity; }
 
         public override void EnterState() {
             entity.GetWeapon().Wield();
@@ -326,7 +350,7 @@ public class Player : Entity<Player.PlayerState> {
         }
 
         public override void FixedUpdateState() {
-            Move(Vector2.zero, 1);
+            entity.Move(Vector2.zero, 0, 0, decelRate, 1);
         }
 
         public override void ExitState() {

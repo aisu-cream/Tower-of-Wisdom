@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 
 using System;
 using System.Collections;
@@ -52,17 +52,36 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
         base.Start();
     }
 
+    void OnDrawGizmos() {
+        // draw navmesh agent path
+        if (!agent || !agent.hasPath)
+            return;
+
+        Gizmos.color = Color.green;
+
+        Vector3[] corners = agent.path.corners;
+
+        for (int i = 0; i < corners.Length - 1; i++) {
+            Gizmos.DrawLine(corners[i], corners[i + 1]);
+            Gizmos.DrawSphere(corners[i], 0.08f);
+        }
+    }
+
     void OnValidate() {
         searchFilter.SetLayerMask(searchMask);
     }
 
     [Serializable]
-    private class IdleState : MoveState<EnemyAI> {
+    private class IdleState : BaseState<EnemyState> {
+
+        [Min(0)] public float decelRate = 6;
 
         private Coroutine searchRoutine = null!;
         private bool isCoroutineRunning = false;
 
-        public IdleState(EnemyState stateKey, EnemyAI entity) : base(stateKey, entity) { }
+        private EnemyAI entity;
+
+        public IdleState(EnemyState stateKey, EnemyAI entity) : base(stateKey) { this.entity = entity; }
 
         public override void EnterState() {
             entity.target = null;
@@ -75,7 +94,7 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
         }
 
         public override void FixedUpdateState() {
-            Move(Vector2.zero, 0.5f);
+            entity.Move(Vector2.zero, 0, 0, decelRate, 0.5f);
         }
 
         public override EnemyState GetNextState() {
@@ -118,21 +137,28 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
     }
 
     [Serializable]
-    private class ChaseState : MoveState<EnemyAI> {
+    private class ChaseState : BaseState<EnemyState> {
 
-        public float stoppingDistance;
+        [Min(0)] public float targetSpeed = 6;
+        [Min(0)] public float accelRate = 10;
+        [Min(0)] public float decelRate = 10;
+
+        public float jumpStrength = 15f;
+        [Range(0, 1)] public float airLerpAmount = 0.4f;
+
         private float distanceFromTarget;
 
-        public ChaseState(EnemyState stateKey, EnemyAI entity) : base(stateKey, entity) { }
+        private float lastY = 0f;
+        private float verticalStagnationTimer = 0f;
+
+        private EnemyAI entity;
+
+        public ChaseState(EnemyState stateKey, EnemyAI entity) : base(stateKey) { this.entity = entity; }
 
         public override void EnterState() {
             distanceFromTarget = 0;
-        }
-
-        public override EnemyState GetNextState() {
-            if (distanceFromTarget > entity.targetDetectRadius)
-                return EnemyState.Idle;
-            return stateKey;
+            lastY = entity.GetPosition().y;
+            verticalStagnationTimer = 0f;
         }
 
         public override void UpdateState() {
@@ -142,30 +168,77 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
         }
 
         public override void FixedUpdateState() {
+            // compensate if agent is on the wrong navmesh surface
+            float currentY = entity.GetPosition().y;
+            float deltaY = Mathf.Abs(currentY - lastY);
+
+            bool targetAbove = entity.target!.GetPosition().y - currentY > 0.5f;
+            bool chasing = entity.agent.hasPath;
+
+            if (targetAbove && chasing) {
+                if (verticalStagnationTimer >= 0.2f)
+                    RecoverFromNavigationFailure();
+                verticalStagnationTimer = (deltaY < 0.02f) ? verticalStagnationTimer + Time.fixedDeltaTime : 0f;                
+            }
+            else {
+                verticalStagnationTimer = 0f;
+            }
+
+            lastY = currentY;
+            
+            // move the agent accordingly
             Vector2 dir = Vector2.zero;
 
-            if (entity.agent.remainingDistance > entity.GetHorizontalVelocity().magnitude / accelRate + 0.1f)
-                dir = Quaternion.AngleAxis(-90, Vector3.right) * Vector3.ProjectOnPlane(entity.agent.desiredVelocity, Vector3.up);
+            if (!entity.agent.isOnOffMeshLink) {
+                // accelerate only when the agent is not near the target so that it can stop exactly on the target
+                if (entity.agent.remainingDistance > entity.GetHorizontalVelocity().magnitude / accelRate + 0.1f) {
+                    Vector3 planar = Vector3.ProjectOnPlane(entity.agent.desiredVelocity, Vector3.up);
+                    dir = new Vector2(planar.x, planar.z);
+                }
+            }
+            else {
+                Vector3 dir3D = entity.agent.currentOffMeshLinkData.endPos - entity.GetPosition();
+                dir = new Vector2(dir3D.x, dir3D.z);
+                if (entity.IsGrounded() && (dir3D.y > 0 || dir.magnitude > 4f))
+                    entity.Jump(jumpStrength);
+            }
 
-            Move(dir, 1f);
+            if (entity.IsGrounded())
+                entity.Move(dir, targetSpeed, accelRate, decelRate, 1f);
+            else
+                entity.Float(dir, targetSpeed, accelRate, decelRate, airLerpAmount);
+        }
+
+        private void RecoverFromNavigationFailure() {
+            entity.agent.ResetPath();
+
+            Vector3 pos = entity.GetPosition();
+            NavMeshHit hit;
+
+            if (NavMesh.SamplePosition(pos, out hit, 2.0f, entity.agent.areaMask))
+                entity.agent.Warp(hit.position);
         }
 
         public override void ExitState() {
             entity.agent.ResetPath();
         }
+
+        public override EnemyState GetNextState() {
+            if (!entity.agent.isOnOffMeshLink && distanceFromTarget > entity.targetDetectRadius * 2)
+                return EnemyState.Idle;
+            return stateKey;
+        }
     }
 
     [Serializable]
-    private class CombatState : MoveState<EnemyAI> { 
+    private class CombatState : BaseState<EnemyState> {
 
-        public CombatState(EnemyState stateKey, EnemyAI entity) : base(stateKey, entity) { }
+        private EnemyAI entity;
+
+        public CombatState(EnemyState stateKey, EnemyAI entity) : base(stateKey) { this.entity = entity; }
 
         public override EnemyState GetNextState() {
             return stateKey;
-        }
-
-        public override void FixedUpdateState() {
-            Move(Vector2.zero, 0.75f);
         }
     }
 }
