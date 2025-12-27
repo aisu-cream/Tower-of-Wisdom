@@ -143,13 +143,15 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
         [Min(0)] public float accelRate = 10;
         [Min(0)] public float decelRate = 10;
 
-        public float jumpStrength = 15f;
-        [Range(0, 1)] public float airLerpAmount = 0.4f;
+        [Min(0)] public float jumpStrength = 15f;
+        [Min(0)] public float jumpNlagTime = 0.15f;
 
         private float distanceFromTarget;
 
         private float lastY = 0f;
         private float verticalStagnationTimer = 0f;
+        private bool jumpCommitted;
+        private float jumpStartTimer = 0;
 
         private EnemyAI entity;
 
@@ -159,11 +161,15 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
             distanceFromTarget = 0;
             lastY = entity.GetPosition().y;
             verticalStagnationTimer = 0f;
+            jumpStartTimer = 0;
         }
 
         public override void UpdateState() {
             entity.agent.nextPosition = entity.GetPosition();
-            entity.agent.SetDestination(entity.target!.GetPosition());
+
+            if (NavMesh.SamplePosition(entity.target!.GetPosition(), out NavMeshHit hit, 4f, NavMesh.AllAreas))
+                entity.agent.SetDestination(hit.position);
+
             distanceFromTarget = (entity.target!.GetPosition() - entity.GetPosition()).magnitude;
         }
 
@@ -172,22 +178,22 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
             float currentY = entity.GetPosition().y;
             float deltaY = Mathf.Abs(currentY - lastY);
 
-            bool targetAbove = entity.target!.GetPosition().y - currentY > 0.5f;
+            bool targetAboveOrBelow = Mathf.Abs(entity.target!.GetPosition().y - currentY) > 0.5f;
             bool chasing = entity.agent.hasPath;
 
-            if (targetAbove && chasing) {
-                if (verticalStagnationTimer >= 0.2f)
+            if (!entity.agent.isOnOffMeshLink && targetAboveOrBelow && chasing) {
+                if (verticalStagnationTimer > jumpNlagTime)
                     RecoverFromNavigationFailure();
                 verticalStagnationTimer = (deltaY < 0.02f) ? verticalStagnationTimer + Time.fixedDeltaTime : 0f;                
             }
-            else {
+            else
                 verticalStagnationTimer = 0f;
-            }
 
             lastY = currentY;
             
             // move the agent accordingly
             Vector2 dir = Vector2.zero;
+            float speed = targetSpeed;
 
             if (!entity.agent.isOnOffMeshLink) {
                 // accelerate only when the agent is not near the target so that it can stop exactly on the target
@@ -197,16 +203,42 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
                 }
             }
             else {
+                // perform custom jump logic
                 Vector3 dir3D = entity.agent.currentOffMeshLinkData.endPos - entity.GetPosition();
+                Vector3 originalDir3D = entity.agent.currentOffMeshLinkData.endPos - entity.agent.currentOffMeshLinkData.startPos;
+
                 dir = new Vector2(dir3D.x, dir3D.z);
-                if (entity.IsGrounded() && (dir3D.y > 0 || dir.magnitude > 4f))
-                    entity.Jump(jumpStrength);
+                Vector2 originalDir = new Vector2(originalDir3D.x, originalDir3D.z);
+
+                if (Vector2.Dot(dir, originalDir) < 0)
+                    dir = Vector2.zero;
+
+                entity.agent.isStopped = true;
+
+                if (entity.IsGrounded()) {
+                    if (jumpCommitted) {
+                        entity.agent.CompleteOffMeshLink();
+                        jumpStartTimer = 0f;
+                        entity.agent.isStopped = false;
+                        jumpCommitted = false;
+                    }
+                    else {
+                        speed = 0;
+                        jumpStartTimer += Time.fixedDeltaTime;
+
+                        if (jumpStartTimer >= jumpNlagTime) {
+                            entity.Jump(jumpStrength);
+                            jumpCommitted = true;
+                        }
+                    }
+                }
             }
 
+            // move the entity
             if (entity.IsGrounded())
-                entity.Move(dir, targetSpeed, accelRate, decelRate, 1f);
+                entity.Move(dir, speed, accelRate, decelRate, 1f);
             else
-                entity.Float(dir, targetSpeed, accelRate, decelRate, airLerpAmount);
+                entity.Float(dir, speed, accelRate, decelRate, 1f);
         }
 
         private void RecoverFromNavigationFailure() {

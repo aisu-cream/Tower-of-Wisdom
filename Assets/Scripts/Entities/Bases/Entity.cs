@@ -191,7 +191,7 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
         // check current velocity and direction of input
         Vector3 currVelocity = GetHorizontalVelocity();
         float currSpeed = currVelocity.magnitude;
-        bool movingInIdenticalDir = Vector3.Dot(currVelocity, moveDir) > 0;
+        bool movingInIdenticalDir = Vector3.Dot(currVelocity, moveDir * targetSpeed) > 0;
 
         // calculate the target velocity
         Vector3 targetVel = moveDir;

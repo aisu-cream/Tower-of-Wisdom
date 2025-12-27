@@ -278,7 +278,7 @@ MonoBehaviour:
   m_StartTransform: {fileID: 0}
   m_EndTransform: {fileID: 0}
   m_Activated: 1
-  m_Width: 1.5
+  m_Width: 1
   m_CostModifier: 1
   m_IsOverridingCost: 0
   m_Bidirectional: 0
@@ -335,7 +335,7 @@ MonoBehaviour:
   m_StartTransform: {fileID: 0}
   m_EndTransform: {fileID: 0}
   m_Activated: 1
-  m_Width: 1.5
+  m_Width: 1
   m_CostModifier: 1
   m_IsOverridingCost: 0
   m_Bidirectional: 0
@@ -963,7 +963,7 @@ MonoBehaviour:
   m_StartTransform: {fileID: 0}
   m_EndTransform: {fileID: 0}
   m_Activated: 1
-  m_Width: 1.5
+  m_Width: 1
   m_CostModifier: 1
   m_IsOverridingCost: 0
   m_Bidirectional: 0
@@ -1325,7 +1325,7 @@ MonoBehaviour:
   m_StartTransform: {fileID: 0}
   m_EndTransform: {fileID: 0}
   m_Activated: 1
-  m_Width: 1.5
+  m_Width: 1
   m_CostModifier: 1
   m_IsOverridingCost: 0
   m_Bidirectional: 0
@@ -1598,7 +1598,7 @@ MonoBehaviour:
   m_StartTransform: {fileID: 0}
   m_EndTransform: {fileID: 0}
   m_Activated: 1
-  m_Width: 1.5
+  m_Width: 1
   m_CostModifier: 1
   m_IsOverridingCost: 0
   m_Bidirectional: 0
@@ -1905,7 +1905,7 @@ MonoBehaviour:
   m_StartTransform: {fileID: 0}
   m_EndTransform: {fileID: 0}
   m_Activated: 1
-  m_Width: 1.5
+  m_Width: 1
   m_CostModifier: 1
   m_IsOverridingCost: 0
   m_Bidirectional: 0
@@ -2070,7 +2070,7 @@ MonoBehaviour:
   m_StartTransform: {fileID: 0}
   m_EndTransform: {fileID: 0}
   m_Activated: 1
-  m_Width: 1.5
+  m_Width: 1
   m_CostModifier: 1
   m_IsOverridingCost: 0
   m_Bidirectional: 0
@@ -2127,7 +2127,7 @@ MonoBehaviour:
   m_StartTransform: {fileID: 0}
   m_EndTransform: {fileID: 0}
   m_Activated: 1
-  m_Width: 1.5
+  m_Width: 1
   m_CostModifier: 1
   m_IsOverridingCost: 0
   m_Bidirectional: 0
@@ -2361,7 +2361,7 @@ MonoBehaviour:
     dashLerpAmount: 0.5
     defaultDashDirection: {x: 1, y: 0}
   jumpState:
-    jumpStrength: 13
+    jumpStrength: 12
     jumpLerpAmount: 0.4
   fallState:
     coyoteTime: 0.2
@@ -2594,7 +2594,7 @@ MonoBehaviour:
   m_StartTransform: {fileID: 0}
   m_EndTransform: {fileID: 0}
   m_Activated: 1
-  m_Width: 1.5
+  m_Width: 1
   m_CostModifier: 1
   m_IsOverridingCost: 0
   m_Bidirectional: 0
@@ -2727,10 +2727,10 @@ MonoBehaviour:
     decelRate: 6
   chaseState:
     targetSpeed: 6
-    accelRate: 10
-    decelRate: 10
-    jumpStrength: 13
-    airLerpAmount: 0.6
+    accelRate: 13
+    decelRate: 13
+    jumpStrength: 12
+    jumpNlagTime: 0.15
 --- !u!195 &1920977272
 NavMeshAgent:
   m_ObjectHideFlags: 0
