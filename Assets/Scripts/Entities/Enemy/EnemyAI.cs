@@ -1,4 +1,4 @@
-﻿#nullable enable
+﻿# nullable enable
 
 using System;
 using System.Collections;
@@ -38,6 +38,8 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     protected override void Start() {
+        searchFilter.SetLayerMask(searchMask);
+
         agent = GetComponent<NavMeshAgent>();
 
         agent.updatePosition = false;
@@ -50,21 +52,6 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
         SetCurrentState(EnemyState.Idle);
 
         base.Start();
-    }
-
-    void OnDrawGizmos() {
-        // draw navmesh agent path
-        if (!agent || !agent.hasPath)
-            return;
-
-        Gizmos.color = Color.green;
-
-        Vector3[] corners = agent.path.corners;
-
-        for (int i = 0; i < corners.Length - 1; i++) {
-            Gizmos.DrawLine(corners[i], corners[i + 1]);
-            Gizmos.DrawSphere(corners[i], 0.08f);
-        }
     }
 
     void OnValidate() {
@@ -116,10 +103,12 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
             float minDistance = float.MaxValue;
 
             for (int i = 0; i < entities.Length && i < entity.maxSearchConstraint; i++) {
-                Vector3 diff = entities[i].transform.position - entity.transform.position;
-                RaycastHit hit;
+                IEntity targetEntity = entities[i].GetComponent<IEntity>();
 
-                if (Vector3.Dot(entity.GetFacingDirection(), diff) >= 0 && Physics.Raycast(entity.transform.position, diff, out hit, entity.targetDetectRadius, entity.confirmMask)) {
+                Vector3 pos = entity.GetVisionPosition();
+                Vector3 diff = targetEntity.GetVisionPosition() - pos;
+
+                if (Vector3.Dot(entity.GetFacingDirection(), diff) >= 0 && Physics.Raycast(pos, diff, out RaycastHit hit, entity.targetDetectRadius, entity.confirmMask)) {
                     float distance = diff.magnitude;
 
                     if (hit.transform.gameObject == entities[i].transform.gameObject && minDistance > distance) {
@@ -147,9 +136,6 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
         [Min(0)] public float jumpNlagTime = 0.15f;
 
         private float distanceFromTarget;
-
-        private float lastY = 0f;
-        private float verticalStagnationTimer = 0f;
         private bool jumpCommitted;
         private float jumpStartTimer = 0;
 
@@ -159,38 +145,36 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
 
         public override void EnterState() {
             distanceFromTarget = 0;
-            lastY = entity.GetPosition().y;
-            verticalStagnationTimer = 0f;
             jumpStartTimer = 0;
         }
 
         public override void UpdateState() {
+            if (!entity.target!.IsAlive()) {
+                entity.target = null;
+                return;
+            }
+            
             entity.agent.nextPosition = entity.GetPosition();
+            Vector3 pos = entity.target.GetPosition();
 
-            if (NavMesh.SamplePosition(entity.target!.GetPosition(), out NavMeshHit hit, 4f, NavMesh.AllAreas))
-                entity.agent.SetDestination(hit.position);
+            if (Physics.Raycast(pos + 0.1f * Vector3.up, Vector3.down, out RaycastHit hit))
+                entity.agent.SetDestination(hit.point);
+            else
+                entity.agent.SetDestination(pos);
 
-            distanceFromTarget = (entity.target!.GetPosition() - entity.GetPosition()).magnitude;
+            distanceFromTarget = (pos - entity.GetPosition()).magnitude;
         }
 
         public override void FixedUpdateState() {
-            // compensate if agent is on the wrong navmesh surface
-            float currentY = entity.GetPosition().y;
-            float deltaY = Mathf.Abs(currentY - lastY);
+            // recover if agent is on the wrong navmesh surface
+            NavMeshHit hit;
+            float divergence = Vector3.Distance(entity.agent.nextPosition, entity.GetPosition());
 
-            bool targetAboveOrBelow = Mathf.Abs(entity.target!.GetPosition().y - currentY) > 0.5f;
-            bool chasing = entity.agent.hasPath;
-
-            if (!entity.agent.isOnOffMeshLink && targetAboveOrBelow && chasing) {
-                if (verticalStagnationTimer > jumpNlagTime)
-                    RecoverFromNavigationFailure();
-                verticalStagnationTimer = (deltaY < 0.02f) ? verticalStagnationTimer + Time.fixedDeltaTime : 0f;                
+            if (!entity.agent.isStopped && divergence > 0.5f && entity.IsGrounded() && NavMesh.SamplePosition(entity.GetPosition(), out hit, 0.4f, entity.agent.areaMask)) {
+                entity.agent.ResetPath();
+                entity.agent.Warp(hit.position);
             }
-            else
-                verticalStagnationTimer = 0f;
 
-            lastY = currentY;
-            
             // move the agent accordingly
             Vector2 dir = Vector2.zero;
             float speed = targetSpeed;
@@ -205,9 +189,9 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
             else {
                 // perform custom jump logic
                 Vector3 dir3D = entity.agent.currentOffMeshLinkData.endPos - entity.GetPosition();
-                Vector3 originalDir3D = entity.agent.currentOffMeshLinkData.endPos - entity.agent.currentOffMeshLinkData.startPos;
-
                 dir = new Vector2(dir3D.x, dir3D.z);
+
+                Vector3 originalDir3D = entity.agent.currentOffMeshLinkData.endPos - entity.agent.currentOffMeshLinkData.startPos;
                 Vector2 originalDir = new Vector2(originalDir3D.x, originalDir3D.z);
 
                 if (Vector2.Dot(dir, originalDir) < 0)
@@ -215,21 +199,19 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
 
                 entity.agent.isStopped = true;
 
-                if (entity.IsGrounded()) {
-                    if (jumpCommitted) {
-                        entity.agent.CompleteOffMeshLink();
-                        jumpStartTimer = 0f;
-                        entity.agent.isStopped = false;
-                        jumpCommitted = false;
-                    }
-                    else {
-                        speed = 0;
-                        jumpStartTimer += Time.fixedDeltaTime;
+                if (entity.IsGrounded() && jumpCommitted) {
+                    entity.agent.CompleteOffMeshLink();
+                    jumpStartTimer = 0f;
+                    entity.agent.isStopped = false;
+                    jumpCommitted = false;
+                }
+                else if (entity.CanJump() && !jumpCommitted) {
+                    speed = 0;
+                    jumpStartTimer += Time.fixedDeltaTime;
 
-                        if (jumpStartTimer >= jumpNlagTime) {
-                            entity.Jump(jumpStrength);
-                            jumpCommitted = true;
-                        }
+                    if (jumpStartTimer >= jumpNlagTime) {
+                        entity.Jump(jumpStrength);
+                        jumpCommitted = true;
                     }
                 }
             }
@@ -241,22 +223,12 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
                 entity.Float(dir, speed, accelRate, decelRate, 1f);
         }
 
-        private void RecoverFromNavigationFailure() {
-            entity.agent.ResetPath();
-
-            Vector3 pos = entity.GetPosition();
-            NavMeshHit hit;
-
-            if (NavMesh.SamplePosition(pos, out hit, 2.0f, entity.agent.areaMask))
-                entity.agent.Warp(hit.position);
-        }
-
         public override void ExitState() {
             entity.agent.ResetPath();
         }
 
         public override EnemyState GetNextState() {
-            if (!entity.agent.isOnOffMeshLink && distanceFromTarget > entity.targetDetectRadius * 2)
+            if (entity.target == null || !entity.agent.isOnOffMeshLink && distanceFromTarget > entity.targetDetectRadius * 2)
                 return EnemyState.Idle;
             return stateKey;
         }

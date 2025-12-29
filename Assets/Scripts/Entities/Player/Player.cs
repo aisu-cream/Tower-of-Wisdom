@@ -55,13 +55,9 @@ public class Player : Entity<Player.PlayerState> {
     }
 
     protected override void Update() {
-        if (GetWeapon() != null && Input.GetKeyDown(inputData.wieldCode))
+        if (GetWeapon() != null && inputData.wieldPressed)
             TransitionToState(PlayerState.Wield);
         base.Update();
-    }
-
-    private Vector2 GetInput() {
-        return new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
     }
 
     public override void GetPushed(Vector3 impulse) {
@@ -86,12 +82,12 @@ public class Player : Entity<Player.PlayerState> {
         public override PlayerState GetNextState() {
             if (!entity.IsGrounded())
                 return PlayerState.Fall;
-            else if (Input.GetKeyDown(entity.inputData.dashCode))
+            else if (entity.inputData.dashPressed)
                 return PlayerState.Dash;
-            else if (Input.GetKeyDown(entity.inputData.jumpCode))
+            else if (entity.inputData.jumpHeld)
                 return PlayerState.Jump;
-            else if (Input.GetAxisRaw("Horizontal") != 0 || Input.GetAxisRaw("Vertical") != 0) {
-                if (Input.GetKey(entity.inputData.runCode))
+            else if (entity.inputData.dirInput != Vector2.zero) {
+                if (entity.inputData.runHeld)
                     return PlayerState.Run;
                 else
                     return PlayerState.Walk;
@@ -113,19 +109,19 @@ public class Player : Entity<Player.PlayerState> {
         public WalkState(PlayerState stateKey, Player entity) : base(stateKey) { this.entity = entity; }
         
         public override void FixedUpdateState() {
-            entity.Move(entity.GetInput(), targetSpeed, accelRate, decelRate, 1);
+            entity.Move(entity.inputData.dirInput, targetSpeed, accelRate, decelRate, 1);
         }
 
         public override PlayerState GetNextState() {
             if (!entity.IsGrounded())
                 return PlayerState.Fall;
-            else if (Input.GetKeyDown(entity.inputData.dashCode))
+            else if (entity.inputData.dashPressed)
                 return PlayerState.Dash;
-            else if (Input.GetKeyDown(entity.inputData.jumpCode))
+            else if (entity.inputData.jumpHeld)
                 return PlayerState.Jump;
             else if (entity.GetDesiredDirection().magnitude == 0 && entity.GetHorizontalVelocity().magnitude <= 0.1f)
                 return PlayerState.Idle;
-            else if (entity.GetDesiredDirection().magnitude != 0 && Input.GetKey(entity.inputData.runCode))
+            else if (entity.inputData.runHeld && entity.GetDesiredDirection().magnitude != 0)
                 return PlayerState.Run;
             else
                 return stateKey;
@@ -144,19 +140,19 @@ public class Player : Entity<Player.PlayerState> {
         public RunState(PlayerState stateKey, Player entity) : base(stateKey) { this.entity = entity; }
 
         public override void FixedUpdateState() {
-            entity.Move(entity.GetInput(), targetSpeed, accelRate, decelRate, 1);
+            entity.Move(entity.inputData.dirInput, targetSpeed, accelRate, decelRate, 1);
         }
 
         public override PlayerState GetNextState() {
             if (!entity.IsGrounded())
                 return PlayerState.Fall;
-            else if (Input.GetKeyDown(entity.inputData.dashCode))
+            else if (entity.inputData.dashPressed)
                 return PlayerState.Dash;
-            else if (Input.GetKeyDown(entity.inputData.jumpCode))
+            else if (entity.inputData.jumpHeld)
                 return PlayerState.Jump;
             else if (entity.GetDesiredDirection().magnitude == 0 && entity.GetHorizontalVelocity().magnitude <= 0.1f)
                 return PlayerState.Idle;
-            else if (entity.GetDesiredDirection().magnitude != 0 && !Input.GetKey(entity.inputData.runCode))
+            else if (!entity.inputData.runHeld && entity.GetDesiredDirection().magnitude != 0)
                 return PlayerState.Walk;
             else
                 return stateKey;
@@ -180,7 +176,7 @@ public class Player : Entity<Player.PlayerState> {
         public DashState(PlayerState stateKey, Player entity) : base(stateKey) { this.entity = entity; }
 
         public override void EnterState() {
-            Vector3 temp = entity.GetInput();
+            Vector3 temp = entity.inputData.dirInput;
 
             if (temp.magnitude == 0)
                 temp = defaultDashDirection;
@@ -197,7 +193,7 @@ public class Player : Entity<Player.PlayerState> {
         }
 
         public override void FixedUpdateState() {
-            entity.Move(entity.GetInput(), entity.runState.targetSpeed, decelRate, decelRate, dashLerpAmount);
+            entity.Move(entity.inputData.dirInput, entity.runState.targetSpeed, decelRate, decelRate, dashLerpAmount);
         }
 
         public override PlayerState GetNextState() {
@@ -206,7 +202,7 @@ public class Player : Entity<Player.PlayerState> {
                     entity.fallState.DisableCoyoteTime();
                     return PlayerState.Fall;
                 }
-                else if (Input.GetKey(entity.inputData.runCode))
+                else if (entity.inputData.runHeld)
                     return PlayerState.Run;
                 else if (entity.GetDesiredDirection().magnitude != 0 || entity.GetHorizontalVelocity().magnitude > 0.1f)
                     return PlayerState.Walk;
@@ -233,14 +229,15 @@ public class Player : Entity<Player.PlayerState> {
         }
 
         public override void FixedUpdateState() {
-            entity.Float(entity.GetInput(), entity.walkState.targetSpeed, entity.walkState.accelRate, entity.walkState.decelRate, jumpLerpAmount);
+            entity.Float(entity.inputData.dirInput, entity.walkState.targetSpeed, entity.walkState.accelRate, entity.walkState.decelRate, jumpLerpAmount);
         }
 
         public override PlayerState GetNextState() {
+            if (entity.inputData.jumpHeld && entity.CanJump())
+                EnterState();
+
             if (entity.IsGrounded()) {
-                if (Input.GetKey(entity.inputData.jumpCode))
-                    EnterState();
-                else if (Input.GetKey(entity.inputData.runCode))
+                if (entity.inputData.runHeld)
                     return PlayerState.Run;
                 else if (entity.GetDesiredDirection().magnitude != 0 || entity.GetHorizontalVelocity().magnitude > 0.1f)
                     return PlayerState.Walk;
@@ -271,20 +268,18 @@ public class Player : Entity<Player.PlayerState> {
         }
 
         public override void FixedUpdateState() {
-            entity.Float(entity.GetInput(), entity.walkState.targetSpeed, entity.walkState.accelRate, entity.walkState.decelRate, fallLerpAmount);
+            entity.Float(entity.inputData.dirInput, entity.walkState.targetSpeed, entity.walkState.accelRate, entity.walkState.decelRate, fallLerpAmount);
         }
 
         public override PlayerState GetNextState() {
             bool coyotable = canEnterCoyoteTime && Time.time - fallStartTime < coyoteTime;
 
-            if (Input.GetKeyDown(entity.inputData.jumpCode) && coyotable)
+            if (entity.inputData.jumpHeld && (coyotable || entity.CanJump()))
                 return PlayerState.Jump;
-            else if (Input.GetKeyDown(entity.inputData.dashCode) && (entity.IsGrounded() || entity.OnStandableSurface()) && coyotable)
+            else if (entity.inputData.dashPressed && (entity.IsGrounded() || entity.OnStandableSurface()) && coyotable)
                 return PlayerState.Dash;
             else if (entity.IsGrounded()) {
-                if (Input.GetKeyDown(entity.inputData.jumpCode))
-                    return PlayerState.Jump;
-                else if (Input.GetKey(entity.inputData.runCode))
+                if (entity.inputData.runHeld)
                     return PlayerState.Run;
                 else if (entity.GetDesiredDirection().magnitude != 0 || entity.GetHorizontalVelocity().magnitude > 0.1f)
                     return PlayerState.Walk;
@@ -318,7 +313,7 @@ public class Player : Entity<Player.PlayerState> {
         }
 
         public override void FixedUpdateState() {
-            entity.Move(entity.GetInput(), 0, 0, decelRate, knockbackLerpAmount);
+            entity.Move(entity.inputData.dirInput, 0, 0, decelRate, knockbackLerpAmount);
         }
 
         public override PlayerState GetNextState() {

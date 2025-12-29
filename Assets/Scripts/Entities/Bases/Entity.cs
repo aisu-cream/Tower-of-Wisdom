@@ -1,6 +1,5 @@
 ﻿using System;
 using UnityEngine;
-using static UnityEngine.EventSystems.EventTrigger;
 
 [RequireComponent(typeof(Rigidbody), typeof(CapsuleCollider))]
 public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where Estate : Enum {
@@ -17,14 +16,14 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
     [Header("Physics")]
     protected Rigidbody rb;
     protected CapsuleCollider col;
+    private RaycastHit surfaceHit;
+    private float ignoreGroundUntil;
+    protected bool isGrounded;
 
     [Header("Movement")]
     private Vector3 moveDir;
     private Vector3 facingDir;
     private Vector3 gravDir = Vector3.down;
-    private RaycastHit surfaceHit;
-    private float ignoreGroundUntil;
-    protected bool isGrounded;
 
     [Header("Combat")]
     protected Weapon weapon;
@@ -52,25 +51,21 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
             Vector3 gravAccel = gravity * gravDir;
             AddForce(gravAccel, ForceMode.Acceleration);
 
-            // drag
+            // quadratic drag
             float dragConst = gravity * rb.mass / (maxFallSpeed * maxFallSpeed);
             AddForce(GetVelocity().y * Mathf.Abs(GetVelocity().y) * dragConst * gravDir, ForceMode.Force);
         }
     }
 
-    protected bool OnStandableSurface() {
-        float skinEps = 0.001f;
-        return (Physics.SphereCast(transform.position + col.radius * Vector3.up, col.radius - 0.05f, Vector3.down, out surfaceHit, 0.25f)) &&
-               (Vector3.Dot(GetVelocity(), surfaceHit.normal) <= skinEps && Vector3.Angle(surfaceHit.normal, Vector3.up) <= maxSlopeAngle + skinEps);
-    }
-
-    protected void DisableGroundCheckFor(float duration) {
-        ignoreGroundUntil = Time.time + duration;
-    }
-
     void OnValidate() {
         if (initialHealth < health)
             health = initialHealth;
+    }
+
+    protected bool OnStandableSurface() {
+        float skinEps = 0.001f;
+        return (Physics.SphereCast(transform.position + col.radius * Vector3.up, col.radius - 0.05f, Vector3.down, out surfaceHit, 0.15f)) &&
+               (Vector3.Angle(surfaceHit.normal, Vector3.up) <= maxSlopeAngle + skinEps && Vector3.Dot(GetVelocity(), surfaceHit.normal) <= skinEps);
     }
 
     public virtual float GetHealth() {
@@ -81,8 +76,8 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
         return transform.position;
     }
 
-    public virtual Vector3 GetHorizontalPosition() {
-        return new Vector3(transform.position.x, 0, transform.position.z);
+    public virtual Vector3 GetVisionPosition() {
+        return col.bounds.center;
     }
 
     public virtual Vector3 GetVelocity() {
@@ -90,7 +85,10 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
     }
 
     public virtual Vector3 GetHorizontalVelocity() {
-        return new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
+        if (IsGrounded())
+            return Vector3.ProjectOnPlane(rb.linearVelocity, surfaceHit.normal);
+        else
+            return new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
     }
 
     public virtual Vector3 GetDesiredDirection() {
@@ -136,6 +134,10 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
     // Common use case is adding Transition to State
     public virtual void GetPushed(Vector3 impulse) { 
         AddForce(impulse, ForceMode.Impulse);
+    }
+
+    public virtual bool IsAlive() {
+        return this != null;
     }
 
     // accelerate player towards the target velocity
@@ -225,5 +227,19 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
 
         DisableGroundCheckFor(0.05f);
         isGrounded = false;
+    }
+
+    protected bool CanJump() {
+        if (!IsGrounded())
+            return false;
+
+        if (Physics.Raycast(GetPosition() + 0.1f * Vector3.up, Vector3.down, out RaycastHit hit, 1f))
+            return hit.collider == surfaceHit.collider;
+
+        return false;
+    }
+
+    protected void DisableGroundCheckFor(float duration) {
+        ignoreGroundUntil = Time.time + duration;
     }
 }

@@ -3,7 +3,7 @@ using UnityEngine;
 public interface IEntity {
     float GetHealth();
     Vector3 GetPosition();
-    Vector3 GetHorizontalPosition();
+    Vector3 GetVisionPosition();
     Vector3 GetVelocity();
     Vector3 GetHorizontalVelocity();
     Vector3 GetDesiredDirection();
@@ -14,4 +14,5 @@ public interface IEntity {
     void TakeDamage(float damage);
     void AddForce(Vector3 force, ForceMode forceMode);
     void GetPushed(Vector3 impulse);
+    bool IsAlive();
 }
