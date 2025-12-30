@@ -117,7 +117,7 @@ public class Player : Entity<Player.PlayerState> {
                 return PlayerState.Fall;
             else if (entity.inputData.dashPressed)
                 return PlayerState.Dash;
-            else if (entity.inputData.jumpHeld)
+            else if (entity.inputData.jumpHeld && entity.CanJump())
                 return PlayerState.Jump;
             else if (entity.GetDesiredDirection().magnitude == 0 && entity.GetHorizontalVelocity().magnitude <= 0.1f)
                 return PlayerState.Idle;
@@ -148,7 +148,7 @@ public class Player : Entity<Player.PlayerState> {
                 return PlayerState.Fall;
             else if (entity.inputData.dashPressed)
                 return PlayerState.Dash;
-            else if (entity.inputData.jumpHeld)
+            else if (entity.inputData.jumpHeld && entity.CanJump())
                 return PlayerState.Jump;
             else if (entity.GetDesiredDirection().magnitude == 0 && entity.GetHorizontalVelocity().magnitude <= 0.1f)
                 return PlayerState.Idle;

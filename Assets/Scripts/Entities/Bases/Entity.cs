@@ -20,6 +20,8 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
     private float ignoreGroundUntil;
     protected bool isGrounded;
 
+    private Vector3 velocity = Vector3.zero;
+
     [Header("Movement")]
     private Vector3 moveDir;
     private Vector3 facingDir;
@@ -40,6 +42,9 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
     protected override void FixedUpdate() {
         base.FixedUpdate();
 
+        // caching velocity
+        velocity = rb.linearVelocity;
+
         // check ground
         isGrounded = false;
 
@@ -48,12 +53,11 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
 
         if (!isGrounded) {
             // gravity
-            Vector3 gravAccel = gravity * gravDir;
-            AddForce(gravAccel, ForceMode.Acceleration);
+            AddForce(gravity * gravDir, ForceMode.Acceleration);
 
             // quadratic drag
             float dragConst = gravity * rb.mass / (maxFallSpeed * maxFallSpeed);
-            AddForce(GetVelocity().y * Mathf.Abs(GetVelocity().y) * dragConst * gravDir, ForceMode.Force);
+            AddForce(dragConst * GetVelocity().y * Mathf.Abs(GetVelocity().y) * gravDir, ForceMode.Force);
         }
     }
 
@@ -77,18 +81,18 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
     }
 
     public virtual Vector3 GetVisionPosition() {
-        return col.bounds.center;
+        return transform.TransformPoint(col.center);
     }
 
     public virtual Vector3 GetVelocity() {
-        return rb.linearVelocity;
+        return velocity;
     }
 
     public virtual Vector3 GetHorizontalVelocity() {
         if (IsGrounded())
-            return Vector3.ProjectOnPlane(rb.linearVelocity, surfaceHit.normal);
+            return GetVelocity() - Vector3.Dot(GetVelocity(), surfaceHit.normal) * surfaceHit.normal;
         else
-            return new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
+            return new Vector3(GetVelocity().x, 0, GetVelocity().z);
     }
 
     public virtual Vector3 GetDesiredDirection() {
@@ -151,18 +155,9 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
 
         moveDir.Normalize();
 
-        Vector3 angledDir;
-        Vector3 currentVel;
-
-        // angle the move direction based on the angle of the currently standing surface
-        if (isGrounded) {
-            angledDir = Vector3.ProjectOnPlane(moveDir, surfaceHit.normal).normalized;
-            currentVel = Vector3.ProjectOnPlane(GetVelocity(), surfaceHit.normal);
-        }
-        else {
-            angledDir = moveDir;
-            currentVel = Vector3.ProjectOnPlane(GetVelocity(), Vector3.up);
-        }
+        float dot = Vector3.Dot(moveDir, surfaceHit.normal);
+        Vector3 angledDir = (moveDir - dot * surfaceHit.normal) / Mathf.Sqrt(1 - dot * dot);
+        Vector3 currentVel = GetHorizontalVelocity();
 
         // calculate the force needed
         Vector3 targetVel = Vector3.Lerp(currentVel, angledDir * targetSpeed, lerpAmount);
