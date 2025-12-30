@@ -199,19 +199,21 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
 
                 entity.agent.isStopped = true;
 
-                if (entity.IsGrounded() && jumpCommitted) {
-                    entity.agent.CompleteOffMeshLink();
-                    jumpStartTimer = 0f;
-                    entity.agent.isStopped = false;
-                    jumpCommitted = false;
-                }
-                else if (entity.CanJump() && !jumpCommitted) {
-                    speed = 0;
-                    jumpStartTimer += Time.fixedDeltaTime;
+                if (entity.IsGrounded()) {
+                    if (jumpCommitted) {
+                        entity.agent.CompleteOffMeshLink();
+                        jumpStartTimer = 0f;
+                        entity.agent.isStopped = false;
+                        jumpCommitted = false;
+                    }
+                    else {
+                        speed = 0;
+                        jumpStartTimer += Time.fixedDeltaTime;
 
-                    if (jumpStartTimer >= jumpNlagTime) {
-                        entity.Jump(jumpStrength);
-                        jumpCommitted = true;
+                        if (jumpStartTimer >= jumpNlagTime) {
+                            entity.Jump(jumpStrength);
+                            jumpCommitted = true;
+                        }
                     }
                 }
             }

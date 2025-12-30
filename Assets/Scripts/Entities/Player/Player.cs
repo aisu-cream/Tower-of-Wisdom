@@ -117,7 +117,7 @@ public class Player : Entity<Player.PlayerState> {
                 return PlayerState.Fall;
             else if (entity.inputData.dashPressed)
                 return PlayerState.Dash;
-            else if (entity.inputData.jumpHeld && entity.CanJump())
+            else if (entity.inputData.jumpHeld)
                 return PlayerState.Jump;
             else if (entity.GetDesiredDirection().magnitude == 0 && entity.GetHorizontalVelocity().magnitude <= 0.1f)
                 return PlayerState.Idle;
@@ -148,7 +148,7 @@ public class Player : Entity<Player.PlayerState> {
                 return PlayerState.Fall;
             else if (entity.inputData.dashPressed)
                 return PlayerState.Dash;
-            else if (entity.inputData.jumpHeld && entity.CanJump())
+            else if (entity.inputData.jumpHeld)
                 return PlayerState.Jump;
             else if (entity.GetDesiredDirection().magnitude == 0 && entity.GetHorizontalVelocity().magnitude <= 0.1f)
                 return PlayerState.Idle;
@@ -233,11 +233,10 @@ public class Player : Entity<Player.PlayerState> {
         }
 
         public override PlayerState GetNextState() {
-            if (entity.inputData.jumpHeld && entity.CanJump())
-                EnterState();
-
             if (entity.IsGrounded()) {
-                if (entity.inputData.runHeld)
+                if (entity.inputData.jumpHeld)
+                    EnterState();
+                else if (entity.inputData.runHeld)
                     return PlayerState.Run;
                 else if (entity.GetDesiredDirection().magnitude != 0 || entity.GetHorizontalVelocity().magnitude > 0.1f)
                     return PlayerState.Walk;
@@ -274,7 +273,7 @@ public class Player : Entity<Player.PlayerState> {
         public override PlayerState GetNextState() {
             bool coyotable = canEnterCoyoteTime && Time.time - fallStartTime < coyoteTime;
 
-            if (entity.inputData.jumpHeld && (coyotable || entity.CanJump()))
+            if (entity.inputData.jumpHeld && coyotable)
                 return PlayerState.Jump;
             else if (entity.inputData.dashPressed && (entity.IsGrounded() || entity.OnStandableSurface()) && coyotable)
                 return PlayerState.Dash;

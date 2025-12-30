@@ -20,8 +20,6 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
     private float ignoreGroundUntil;
     protected bool isGrounded;
 
-    private Vector3 velocity = Vector3.zero;
-
     [Header("Movement")]
     private Vector3 moveDir;
     private Vector3 facingDir;
@@ -41,9 +39,6 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
 
     protected override void FixedUpdate() {
         base.FixedUpdate();
-
-        // caching velocity
-        velocity = rb.linearVelocity;
 
         // check ground
         isGrounded = false;
@@ -68,7 +63,7 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
 
     protected bool OnStandableSurface() {
         float skinEps = 0.001f;
-        return (Physics.SphereCast(transform.position + col.radius * Vector3.up, col.radius - 0.05f, Vector3.down, out surfaceHit, 0.15f)) &&
+        return (Physics.Raycast(transform.position + 0.1f * Vector3.up, Vector3.down, out surfaceHit, 0.3f)) &&
                (Vector3.Angle(surfaceHit.normal, Vector3.up) <= maxSlopeAngle + skinEps && Vector3.Dot(GetVelocity(), surfaceHit.normal) <= skinEps);
     }
 
@@ -85,7 +80,7 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
     }
 
     public virtual Vector3 GetVelocity() {
-        return velocity;
+        return rb.linearVelocity;
     }
 
     public virtual Vector3 GetHorizontalVelocity() {
@@ -222,16 +217,6 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
 
         DisableGroundCheckFor(0.05f);
         isGrounded = false;
-    }
-
-    protected bool CanJump() {
-        if (!IsGrounded())
-            return false;
-
-        if (Physics.Raycast(GetPosition() + 0.1f * Vector3.up, Vector3.down, out RaycastHit hit, 1f))
-            return hit.collider == surfaceHit.collider;
-
-        return false;
     }
 
     protected void DisableGroundCheckFor(float duration) {

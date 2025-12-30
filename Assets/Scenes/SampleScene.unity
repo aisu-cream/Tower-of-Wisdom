@@ -2496,7 +2496,7 @@ MonoBehaviour:
     dashLerpAmount: 0.5
     defaultDashDirection: {x: 1, y: 0}
   jumpState:
-    jumpStrength: 12
+    jumpStrength: 13
     jumpLerpAmount: 0.4
   fallState:
     coyoteTime: 0.2
@@ -2617,8 +2617,8 @@ Transform:
   m_GameObject: {fileID: 1778023300}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.9, z: 0}
-  m_LocalScale: {x: 0.8, y: 1.8, z: 0.8}
+  m_LocalPosition: {x: 0, y: 1, z: 0}
+  m_LocalScale: {x: 0.8, y: 2, z: 0.8}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1920977275}
@@ -2877,7 +2877,7 @@ MonoBehaviour:
     targetSpeed: 6
     accelRate: 13
     decelRate: 13
-    jumpStrength: 12
+    jumpStrength: 13
     jumpNlagTime: 0.12
 --- !u!195 &1920977272
 NavMeshAgent:
@@ -2948,9 +2948,9 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 0.4
-  m_Height: 1.8
+  m_Height: 2
   m_Direction: 1
-  m_Center: {x: 0, y: 0.9, z: 0}
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!4 &1920977275
 Transform:
   m_ObjectHideFlags: 0
@@ -3102,8 +3102,8 @@ Transform:
   m_GameObject: {fileID: 1972786156}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.9, z: 0.16000001}
-  m_LocalScale: {x: 0.8, y: 0.9, z: 0.8}
+  m_LocalPosition: {x: 0, y: 1, z: 0.16000001}
+  m_LocalScale: {x: 0.8, y: 1, z: 0.8}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1920977275}
