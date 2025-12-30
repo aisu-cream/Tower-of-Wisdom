@@ -11,7 +11,8 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
     [Header("Environmental")]
     [Min(0)] public float gravity = 49f;
     [Min(0)] public float maxFallSpeed = 30f;
-    [Range(0, 90)] public float maxSlopeAngle = 45f;
+    [Range(0, 45)] public float maxSlopeAngle = 45f;
+    [Min(0)] public float stickSpeed = 10;
 
     [Header("Physics")]
     protected Rigidbody rb;
@@ -42,9 +43,21 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
 
         // check ground
         isGrounded = false;
+        Vector3 vel = GetVelocity();
 
-        if (Time.time >= ignoreGroundUntil && OnStandableSurface())
-            isGrounded = true;
+        if (Time.time >= ignoreGroundUntil && Physics.Raycast(transform.position + 0.1f * Vector3.up, Vector3.down, 0.3f)) {
+            float skinEps = 0.001f;
+
+            if (Physics.SphereCast(transform.position + col.radius * Vector3.up, col.radius - 0.05f, Vector3.down, out surfaceHit, 0.15f)) {
+                Vector3 selfVel = vel;
+
+                if (surfaceHit.rigidbody != null)
+                    selfVel -= surfaceHit.rigidbody.linearVelocity;
+
+                if (Vector3.Angle(surfaceHit.normal, Vector3.up) <= maxSlopeAngle + skinEps && Vector3.Dot(selfVel, surfaceHit.normal) <= skinEps)
+                    isGrounded = true;
+            }
+        }
 
         if (!isGrounded) {
             // gravity
@@ -52,19 +65,19 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
 
             // quadratic drag
             float dragConst = gravity * rb.mass / (maxFallSpeed * maxFallSpeed);
-            AddForce(dragConst * GetVelocity().y * Mathf.Abs(GetVelocity().y) * gravDir, ForceMode.Force);
+            AddForce(dragConst * vel.y * Mathf.Abs(vel.y) * gravDir, ForceMode.Force);
+        }
+        else {
+            if (Vector3.Dot(vel, surfaceHit.normal) > -stickSpeed) {
+                Vector3 surfaceNomralVel = Vector3.Project(vel, surfaceHit.normal);
+                AddForce(-stickSpeed * surfaceHit.normal - surfaceNomralVel, ForceMode.VelocityChange);
+            }
         }
     }
 
     void OnValidate() {
         if (initialHealth < health)
             health = initialHealth;
-    }
-
-    protected bool OnStandableSurface() {
-        float skinEps = 0.001f;
-        return (Physics.Raycast(transform.position + 0.1f * Vector3.up, Vector3.down, out surfaceHit, 0.3f)) &&
-               (Vector3.Angle(surfaceHit.normal, Vector3.up) <= maxSlopeAngle + skinEps && Vector3.Dot(GetVelocity(), surfaceHit.normal) <= skinEps);
     }
 
     public virtual float GetHealth() {
@@ -150,9 +163,13 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
 
         moveDir.Normalize();
 
-        float dot = Vector3.Dot(moveDir, surfaceHit.normal);
-        Vector3 angledDir = (moveDir - dot * surfaceHit.normal) / Mathf.Sqrt(1 - dot * dot);
         Vector3 currentVel = GetHorizontalVelocity();
+        Vector3 angledDir = moveDir;
+
+        if (IsGrounded()) {
+            float dot = Vector3.Dot(moveDir, surfaceHit.normal);
+            angledDir = (moveDir - dot * surfaceHit.normal) / Mathf.Sqrt(1 - dot * dot);
+        }
 
         // calculate the force needed
         Vector3 targetVel = Vector3.Lerp(currentVel, angledDir * targetSpeed, lerpAmount);
@@ -209,9 +226,13 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
 
     protected void Jump(float jumpStrength) {
         float jumpImpulse = jumpStrength;
+        float currYVel = GetVelocity().y;
 
-        if (GetVelocity().y < 0)
-            jumpImpulse -= GetVelocity().y;
+        if (IsGrounded() && surfaceHit.rigidbody != null)
+            currYVel -= surfaceHit.rigidbody.linearVelocity.y;
+
+        if (currYVel < 0)
+            jumpImpulse -= currYVel;
 
         AddForce(Vector3.up * jumpImpulse, ForceMode.Impulse);
 

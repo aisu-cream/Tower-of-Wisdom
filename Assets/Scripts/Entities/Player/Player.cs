@@ -275,7 +275,7 @@ public class Player : Entity<Player.PlayerState> {
 
             if (entity.inputData.jumpHeld && coyotable)
                 return PlayerState.Jump;
-            else if (entity.inputData.dashPressed && (entity.IsGrounded() || entity.OnStandableSurface()) && coyotable)
+            else if (entity.inputData.dashPressed && coyotable)
                 return PlayerState.Dash;
             else if (entity.IsGrounded()) {
                 if (entity.inputData.runHeld)
