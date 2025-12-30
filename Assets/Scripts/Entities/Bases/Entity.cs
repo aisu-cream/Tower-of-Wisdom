@@ -44,16 +44,14 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
         // check ground
         isGrounded = false;
         Vector3 vel = GetVelocity();
+        Vector3 selfVel = vel;
 
         if (Time.time >= ignoreGroundUntil && Physics.Raycast(transform.position + 0.1f * Vector3.up, Vector3.down, 0.3f)) {
             float skinEps = 0.001f;
 
             if (Physics.SphereCast(transform.position + col.radius * Vector3.up, col.radius - 0.05f, Vector3.down, out surfaceHit, 0.15f)) {
-                Vector3 selfVel = vel;
-
                 if (surfaceHit.rigidbody != null)
                     selfVel -= surfaceHit.rigidbody.linearVelocity;
-
                 if (Vector3.Angle(surfaceHit.normal, Vector3.up) <= maxSlopeAngle + skinEps && Vector3.Dot(selfVel, surfaceHit.normal) <= skinEps)
                     isGrounded = true;
             }
@@ -68,10 +66,9 @@ public abstract class Entity<Estate> : FiniteStateMachine<Estate>, IEntity where
             AddForce(dragConst * vel.y * Mathf.Abs(vel.y) * gravDir, ForceMode.Force);
         }
         else {
-            if (Vector3.Dot(vel, surfaceHit.normal) > -stickSpeed) {
-                Vector3 surfaceNomralVel = Vector3.Project(vel, surfaceHit.normal);
-                AddForce(-stickSpeed * surfaceHit.normal - surfaceNomralVel, ForceMode.VelocityChange);
-            }
+            float surfaceNormalSelfVel = Vector3.Dot(selfVel, surfaceHit.normal);
+            if (surfaceNormalSelfVel > -stickSpeed)
+                AddForce((-stickSpeed - surfaceNormalSelfVel) * surfaceHit.normal, ForceMode.VelocityChange);
         }
     }
 
