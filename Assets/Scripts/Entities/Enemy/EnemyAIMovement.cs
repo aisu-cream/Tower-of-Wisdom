@@ -1,102 +1,86 @@
 ﻿# nullable enable
 
-using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
 
-[RequireComponent(typeof(NavMeshAgent))]
-public class EnemyAI : Entity<EnemyAI.EnemyState> {
+[RequireComponent(typeof(NavMeshAgent)), RequireComponent(typeof(EntityController))]
+public class EnemyAIMovement : MonoBehaviour {
+
+    #region Fields
+    EntityController controller;
+    StateMachine stateMachine;
+    NavMeshAgent agent;
+
+    IEntity? target = null!;
+    ContactFilter2D searchFilter = new();
+
+    [Header("Locomotion Settings")]
+    [SerializeField] protected MovementSettings idleSettings = new(4, 8, 8);
+    [SerializeField] protected MovementSettings chaseSettings = new(6, 6, 6);
+
+    [Header("Air Settings")]
+    [Min(0)] public float jumpStrength = 15f;
+    [Min(0)] public float jumpNlagTime = 0.15f;
+    bool jumpCommitted;
+    float jumpStartTimer = 0;
 
     [Header("Logic Controller")]
-    [SerializeField, Min(0)] private float targetDetectRadius = 5f;
-    [SerializeField, Min(0)] private int maxSearchConstraint = 10;
+    [SerializeField, Min(0)] float targetDetectRadius = 5f;
+    [SerializeField, Min(0)] int maxSearchConstraint = 10;
     [SerializeField] LayerMask searchMask;
     [SerializeField] LayerMask confirmMask;
-
-    [Header("State Controller")]
-    [SerializeField] IdleState idleState;
-    [SerializeField] ChaseState chaseState;
-    [SerializeField] CombatState combatState;
-
-    private IEntity? target = null!;
-    private NavMeshAgent agent = null!;
-
-    private ContactFilter2D searchFilter = new();
-
-    public enum EnemyState {
-        Idle,
-        Chase,
-        Combat
-    }
-
-    public EnemyAI() {
-        idleState = new IdleState(EnemyState.Idle, this);
-        chaseState = new ChaseState(EnemyState.Chase, this);
-        combatState = new CombatState(EnemyState.Combat, this);
-    }
+    float distanceFromTarget;
+    #endregion
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    protected override void Start() {
-        searchFilter.SetLayerMask(searchMask);
-
+    void Awake() {
         agent = GetComponent<NavMeshAgent>();
+        controller = GetComponent<EntityController>();
+        stateMachine = new();
 
         agent.updatePosition = false;
         agent.updateRotation = false;
 
-        AddState(EnemyState.Idle, idleState);
-        AddState(EnemyState.Chase, chaseState);
-        AddState(EnemyState.Combat, combatState);
+        var idleState = new IdleState(controller, this);
+        var chaseState = new ChaseState(controller, this);
+        var combatState = new CombatState(controller, this);
 
-        SetCurrentState(EnemyState.Idle);
+        At(idleState, combatState, new FuncPredicate(() => target != null));
 
-        base.Start();
-    }
+        At(chaseState, idleState, new FuncPredicate(() => target == null || !agent.isOnOffMeshLink && distanceFromTarget > targetDetectRadius * 2));
+        At(chaseState, combatState, new FuncPredicate(() => null));
 
-    void OnValidate() {
+        At(combatState, idleState, new FuncPredicate(() => null));
+        At(combatState, chaseState, new FuncPredicate(() => null));
+
+        stateMachine.SetState(idleState);
         searchFilter.SetLayerMask(searchMask);
     }
 
-    [Serializable]
-    private class IdleState : BaseState<EnemyState> {
+    void At(IState from, IState to, FuncPredicate condition) => stateMachine.AddTransition(from, to, condition);
 
-        [Min(0)] public float decelRate = 6;
+    void Any(IState to, FuncPredicate condition) => stateMachine.AddAnyTransition(to, condition);
 
-        private Coroutine searchRoutine = null!;
-        private bool isCoroutineRunning = false;
+    void OnValidate() => searchFilter.SetLayerMask(searchMask);
+    
+    class IdleState : BaseState {
 
-        private EnemyAI entity;
+        EnemyAIMovement movement;
+        Coroutine searchRoutine = null!;
 
-        public IdleState(EnemyState stateKey, EnemyAI entity) : base(stateKey) { this.entity = entity; }
+        public IdleState(EntityController controller, EnemyAIMovement movement) : base(controller) { this.movement = movement; }
 
-        public override void EnterState() {
+        public override void OnEnter() {
             entity.target = null;
-            searchRoutine = entity.StartCoroutine(Search());
+            searchRoutine = movement.StartCoroutine(Search());
         }
 
-        public override void UpdateState() {
-            if (!isCoroutineRunning)
-                searchRoutine = entity.StartCoroutine(Search());
-        }
+        public override void FixedUpdate() => controller.Move(Vector2.zero, 0, 0, decelRate, 0.5f);
 
-        public override void FixedUpdateState() {
-            entity.Move(Vector2.zero, 0, 0, decelRate, 0.5f);
-        }
+        public override void OnExit() => entity.StopCoroutine(searchRoutine);
 
-        public override EnemyState GetNextState() {
-            if (entity.target != null)
-                return EnemyState.Chase;
-            return stateKey;
-        }
-
-        public override void ExitState() {
-            entity.StopCoroutine(searchRoutine);
-        }
-
-        private IEnumerator Search() {
-            isCoroutineRunning = true;
-
+        IEnumerator Search() {
             Collider[] entities = Physics.OverlapSphere(entity.transform.position, entity.targetDetectRadius, entity.searchMask);
 
             IEntity closestVisibleEntity = null!;
@@ -121,41 +105,29 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
             }
 
             entity.target = closestVisibleEntity;
-            isCoroutineRunning = false;
+            searchRoutine = movement.StartCoroutine(Search());
         }
     }
 
-    [Serializable]
-    private class ChaseState : BaseState<EnemyState> {
+    class ChaseState : BaseState {
 
-        [Min(0)] public float targetSpeed = 6;
-        [Min(0)] public float accelRate = 10;
-        [Min(0)] public float decelRate = 10;
+        EnemyAIMovement movement;
 
-        [Min(0)] public float jumpStrength = 15f;
-        [Min(0)] public float jumpNlagTime = 0.15f;
+        public ChaseState(EntityController controller, EnemyAIMovement movement) : base(stateKey) { this.movement = movement; }
 
-        private float distanceFromTarget;
-        private bool jumpCommitted;
-        private float jumpStartTimer = 0;
-
-        private EnemyAI entity;
-
-        public ChaseState(EnemyState stateKey, EnemyAI entity) : base(stateKey) { this.entity = entity; }
-
-        public override void EnterState() {
+        public override void OnEnter() {
             distanceFromTarget = 0;
             jumpStartTimer = 0;
         }
 
-        public override void UpdateState() {
-            if (!entity.target!.IsAlive()) {
-                entity.target = null;
+        public override void Update() {
+            if (!movement.target!.IsAlive()) {
+                movement.target = null;
                 return;
             }
-            
-            entity.agent.nextPosition = entity.GetPosition();
-            Vector3 pos = entity.target.GetPosition();
+
+            movement.agent.nextPosition = movement.transform.position;
+            Vector3 pos = movement.target.transform.position;
 
             if (Physics.Raycast(pos + 0.1f * Vector3.up, Vector3.down, out RaycastHit hit))
                 entity.agent.SetDestination(hit.point);
@@ -165,7 +137,7 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
             distanceFromTarget = (pos - entity.GetPosition()).magnitude;
         }
 
-        public override void FixedUpdateState() {
+        public override void FixedUpdate() {
             // recover if agent is on the wrong navmesh surface
             NavMeshHit hit;
             float divergence = Vector3.Distance(entity.agent.nextPosition, entity.GetPosition());
@@ -179,7 +151,7 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
             Vector2 dir = Vector2.zero;
             float speed = targetSpeed;
 
-            if (!entity.agent.isOnOffMeshLink) {
+            if (!movement.agent.isOnOffMeshLink) {
                 // accelerate only when the agent is not near the target so that it can stop exactly on the target
                 if (entity.agent.remainingDistance > entity.GetHorizontalVelocity().magnitude / accelRate + 0.1f) {
                     Vector3 planar = Vector3.ProjectOnPlane(entity.agent.desiredVelocity, Vector3.up);
@@ -225,26 +197,13 @@ public class EnemyAI : Entity<EnemyAI.EnemyState> {
                 entity.Float(dir, speed, accelRate, decelRate, 1f);
         }
 
-        public override void ExitState() {
-            entity.agent.ResetPath();
-        }
-
-        public override EnemyState GetNextState() {
-            if (entity.target == null || !entity.agent.isOnOffMeshLink && distanceFromTarget > entity.targetDetectRadius * 2)
-                return EnemyState.Idle;
-            return stateKey;
-        }
+        public override void OnExit() => entity.agent.ResetPath();
     }
 
-    [Serializable]
-    private class CombatState : BaseState<EnemyState> {
+    private class CombatState : BaseState {
 
         private EnemyAI entity;
 
-        public CombatState(EnemyState stateKey, EnemyAI entity) : base(stateKey) { this.entity = entity; }
-
-        public override EnemyState GetNextState() {
-            return stateKey;
-        }
+        public CombatState(EnemyState stateKey, EnemyAI entity) : base(stateKey) => this.entity = entity;
     }
 }
