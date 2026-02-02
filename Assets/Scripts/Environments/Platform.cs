@@ -39,20 +39,25 @@ public class Platform : MonoBehaviour {
     }
 
     void FixedUpdate() {
-        if (ReachedCurrentNode()) {
-            waitTimer = nodes[index].waitTime;
-            IncrementIndex();
-        }
-
         if (waitTimer > 0) {
             waitTimer -= Time.fixedDeltaTime;
             return;
         }
 
-        Vector3 currentNodePosition = GetNodePosition(index);
-        Vector3 direction = (currentNodePosition - rb.position).normalized;
+        if (ReachedCurrentNode()) {
+            if (!repeat && index == nodes.Count - 1)
+                return;
+            else {
+                waitTimer = nodes[index].waitTime;
+                IncrementIndex();
+            }
+        }
 
-        rb.MovePosition(rb.position + direction * speed * Time.fixedDeltaTime);
+        if (waitTimer <= 0) {
+            Vector3 currentNodePosition = GetNodePosition(index);
+            Vector3 direction = (currentNodePosition - rb.position).normalized;
+            rb.MovePosition(rb.position + direction * speed * Time.fixedDeltaTime);
+        }
     }
 
     bool ReachedCurrentNode() {
@@ -63,13 +68,8 @@ public class Platform : MonoBehaviour {
 
     void IncrementIndex() {
         index += 1;
-
-        if (index >= nodes.Count) {
-            if (repeat)
-                index = 0;
-            else
-                index = nodes.Count - 1;
-        }
+        if (index >= nodes.Count)
+            index = 0;
     }
 
     Vector3 GetNodePosition(int index) {
@@ -80,8 +80,8 @@ public class Platform : MonoBehaviour {
 
     [Serializable]
     class Node {
-        [SerializeField] public Vector3 position { get; private set; }
-        [SerializeField, Min(0)] public float waitTime { get; private set; }
+        [SerializeField] public Vector3 position;
+        [SerializeField, Min(0)] public float waitTime;
 
         public Node(Vector3 position, float waitTime) {
             this.position = position;
