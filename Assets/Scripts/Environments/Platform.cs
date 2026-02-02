@@ -34,13 +34,13 @@ public class Platform : MonoBehaviour {
         Gizmos.color = Color.cyan;
         Gizmos.DrawLine(transform.position, GetNodePosition(index));
 
-        for (int i = index + 1; i <= nodes.Count; i++)
+        for (int i = index + 1; i < nodes.Count; i++)
             Gizmos.DrawLine(GetNodePosition(i - 1), GetNodePosition(i));
     }
 
     void FixedUpdate() {
         if (ReachedCurrentNode()) {
-            
+            waitTimer = nodes[index].waitTime;
             IncrementIndex();
         }
 
@@ -63,14 +63,19 @@ public class Platform : MonoBehaviour {
 
     void IncrementIndex() {
         index += 1;
-        if (index > nodes.Count)
-            index = 0;
+
+        if (index >= nodes.Count) {
+            if (repeat)
+                index = 0;
+            else
+                index = nodes.Count - 1;
+        }
     }
 
     Vector3 GetNodePosition(int index) {
-        if (index > nodes.Count)
+        if (index >= nodes.Count)
             throw new System.IndexOutOfRangeException("Node index out of range");
-        return index == nodes.Count ? initialPosition : nodes[index].position + initialPosition;
+        return nodes[index].position + initialPosition;
     }
 
     [Serializable]
