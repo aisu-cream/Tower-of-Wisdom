@@ -89,8 +89,8 @@ public class EntityController : MonoBehaviour {
                             pos.y = stepHit.point.y;
                             rb.MovePosition(pos);
 
-                            DisableGroundCheckFor(0.5f / rb.linearVelocity.magnitude);
-                            DisableStickingFor(0.5f / rb.linearVelocity.magnitude);
+                            DisableGroundCheckFor(0.06f);
+                            DisableStickingFor(0.06f);
                         }
                     }
                 }
