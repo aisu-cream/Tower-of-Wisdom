@@ -40,7 +40,7 @@ public class Platform : MonoBehaviour {
 
     void FixedUpdate() {
         if (ReachedCurrentNode()) {
-            SetWaitTimer();
+            
             IncrementIndex();
         }
 
@@ -76,16 +76,6 @@ public class Platform : MonoBehaviour {
     [Serializable]
     class Node {
         [SerializeField] public Vector3 position { get; private set; }
-        [SerializeField, Min(0)] public float waitTime { get; private set; }
-
-        public Node(Vector3 position, float waitTime) {
-            this.position = position;
-            this.waitTime = waitTime;
-        }
-    }
-
-    class UnmodifiableNode {
-        [] public Vector3 position { get; private set; }
         [SerializeField, Min(0)] public float waitTime { get; private set; }
 
         public Node(Vector3 position, float waitTime) {
