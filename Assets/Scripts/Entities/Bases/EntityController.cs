@@ -89,8 +89,8 @@ public class EntityController : MonoBehaviour {
                             pos.y = stepHit.point.y;
                             rb.MovePosition(pos);
 
-                            DisableGroundCheckFor(0.1f);
-                            DisableStickingFor(0.1f);
+                            DisableGroundCheckFor(0.5f / rb.linearVelocity.magnitude);
+                            DisableStickingFor(0.5f / rb.linearVelocity.magnitude);
                         }
                     }
                 }
@@ -116,7 +116,7 @@ public class EntityController : MonoBehaviour {
         Vector3 vel = rb.linearVelocity;
         RaycastHit groundHit;
         
-        if (Physics.SphereCast(rb.position + (col.radius + 0.05f) * Vector3.up, col.radius, Vector3.down, out groundHit, Mathf.Infinity, groundLayer, QueryTriggerInteraction.Ignore)) {
+        if (Physics.SphereCast(rb.position + (col.radius + 0.1f) * Vector3.up, col.radius, Vector3.down, out groundHit, Mathf.Infinity, groundLayer, QueryTriggerInteraction.Ignore)) {
             Vector3 tempSurfaceNormal = groundHit.normal;
             float surfaceAngle = Vector3.Angle(tempSurfaceNormal, Vector3.up);
             float skin = 0.001f;
@@ -143,6 +143,9 @@ public class EntityController : MonoBehaviour {
                 float skin = 0.001f;
 
                 if (extraHit.distance <= 0.2f && surfaceAngle <= slopeLimit + skin) {
+                    if (groundHit.rigidbody != null)
+                        surfaceVelocity = groundHit.rigidbody.linearVelocity;
+
                     if (Vector3.Dot(vel - surfaceVelocity, tempSurfaceNormal) <= skin) {
                         isGrounded = true;
                         surfaceNormal = tempSurfaceNormal;
