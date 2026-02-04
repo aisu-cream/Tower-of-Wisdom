@@ -1,8 +1,8 @@
 using UnityEngine;
 using UnityEngine.Events;
 
-public class TrapTrigger : MonoBehaviour
-{
+public class TrapTrigger : MonoBehaviour {
+
     [Header("Detection Settings")]
     [SerializeField] private string targetTag = "Player";
     [SerializeField] private bool triggerOnlyOnce = false;
@@ -13,25 +13,21 @@ public class TrapTrigger : MonoBehaviour
 
     private bool hasTriggered = false;
 
-    private void OnTriggerEnter(Collider other)
-    {
+    private void OnTriggerEnter(Collider other) {
         if (hasTriggered) return;
 
-        if (other.CompareTag(targetTag))
-        {
+        if (other.CompareTag(targetTag)) {
             ActivateTrap();
         }
     }
 
-    private void ActivateTrap()
-    {
+    private void ActivateTrap() {
         Debug.Log($"Trap on {gameObject.name} activated!");
 
         // This runs whatever functions you've added in the Inspector
         onTrapActivated?.Invoke();
 
-        if (triggerOnlyOnce)
-        {
+        if (triggerOnlyOnce) {
             hasTriggered = true;
         }
     }
