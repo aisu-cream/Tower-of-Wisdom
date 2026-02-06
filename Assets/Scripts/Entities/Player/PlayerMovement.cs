@@ -7,6 +7,7 @@ public class PlayerMovement : MonoBehaviour {
     [SerializeField] InputReader inputReader;
     EntityController controller;
     StateMachine stateMachine;
+    Animator animator;
 
     [Header("Locomotion Settings")]
     [SerializeField] protected MovementSettings walkSettings = new(5, 8, 8);
@@ -22,6 +23,7 @@ public class PlayerMovement : MonoBehaviour {
     void Awake() {
         controller = GetComponent<EntityController>();
         stateMachine = new();
+        animator = GetComponent<Animator>();
 
         var groundState = new GroundState(controller, this);
         var jumpState = new JumpState(controller, this);
@@ -42,7 +44,15 @@ public class PlayerMovement : MonoBehaviour {
 
     void Any(IState to, FuncPredicate condition) => stateMachine.AddAnyTransition(to, condition);
 
-    void Update() => stateMachine.Update();
+    void Update() {
+        stateMachine.Update();
+
+        animator.SetFloat("speed", controller.GetVelocity().magnitude);
+        
+        Vector3 lookDir = controller.GetLookDirection();
+        animator.SetFloat("lookdir_x", lookDir.x);
+        animator.SetFloat("lookdir_y", lookDir.z);
+    }
 
     void FixedUpdate() => stateMachine.FixedUpdate();
 

@@ -195,4 +195,8 @@ public class EntityController : MonoBehaviour {
         isGrounded = false;
         DisableGroundCheckFor(0.05f);
     }
+
+    public Vector3 GetLookDirection() => mover.GetLookDirection();
+
+    public Vector3 GetVelocity() => rb.linearVelocity;
 }
