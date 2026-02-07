@@ -52,6 +52,12 @@ public class PlayerMovement : MonoBehaviour {
         Vector3 lookDir = controller.GetLookDirection();
         animator.SetFloat("lookdir_x", lookDir.x);
         animator.SetFloat("lookdir_y", lookDir.z);
+
+        animator.SetBool("isWalking", false);
+        animator.SetBool("isRunning", false);
+
+        if (controller.GetMoveDirection() != Vector3.zero)
+            animator.SetBool(inputReader.runHeld ? "isRunning" : "isWalking", true);
     }
 
     void FixedUpdate() => stateMachine.FixedUpdate();
