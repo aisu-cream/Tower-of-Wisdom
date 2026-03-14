@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: Fireball
   m_EditorClassIdentifier: 
   label: Fireball
-  castSfx: {fileID: 8300000, guid: 0ce1ed91320d082469aa40663629a590, type: 3}
+  castSfx: {fileID: 8300000, guid: 152896bd2a491c043b47cf325e598551, type: 3}
   castVfx: {fileID: 0}
   runningVfx: {fileID: 6978219959929540622, guid: 798f6b705349d6c4da3543865f0496ae, type: 3}
   effects:
   - rid: 5490353329413554264
-  - rid: 5490353329413554265
+  - rid: 5490353357028065394
   targetingStrategy:
     rid: 5490353329413554297
   references:
@@ -28,10 +28,12 @@ MonoBehaviour:
       type: {class: DamageEffectFactory, ns: , asm: Assembly-CSharp}
       data:
         amount: 10
-    - rid: 5490353329413554265
-      type: {class: KnockbackEffectFactory, ns: , asm: Assembly-CSharp}
-      data:
-        impulseMagnitude: 20
     - rid: 5490353329413554297
       type: {class: SelfTargeting, ns: , asm: Assembly-CSharp}
       data: 
+    - rid: 5490353357028065394
+      type: {class: DamageOverTimeEffectFactory, ns: , asm: Assembly-CSharp}
+      data:
+        duration: 5
+        tickInterval: 1
+        damagePerTick: 5

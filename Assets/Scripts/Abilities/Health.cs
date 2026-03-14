@@ -16,10 +16,10 @@ public class Health : MonoBehaviour, IAffectable {
     public void TakeDamage(float amount) {
         health -= amount;
 
-        if (health <= 0)
-            Destroy(gameObject);
-
-        Debug.Log(health);
+        if (health > 0)
+            Debug.Log(health);
+        else
+            Die();
     }
 
     public void Push(Vector3 impulse) {

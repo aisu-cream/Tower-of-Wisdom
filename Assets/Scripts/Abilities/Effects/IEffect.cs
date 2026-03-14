@@ -1,4 +1,4 @@
-using JetBrains.Annotations;
+using ImprovedTimers;
 using System;
 using UnityEngine;
 
@@ -86,24 +86,29 @@ public class DamageOverTimeEffectFactory : IEffectFactory {
         public float tickInterval;
         public float damagePerTick;
 
-        public event Action<IEffect> OnCompleted;
-
+        IntervalTimer timer;
         IAffectable currentTarget;
+
+        public event Action<IEffect> OnCompleted;
 
         public void Apply(TargetingManager caster, IAffectable target) {
             currentTarget = target;
+            timer = new IntervalTimer(duration, tickInterval);
+            timer.OnInterval = OnInterval;
+            timer.OnTimerStop = CleanUp;
+            timer.Start();
         }
 
-        void OnInterval() => currentTarget?.TakeDamage(damagePerTick);
-        void OnStop() => CleanUp();
-
-        public void Cancel() {
-            CleanUp();
+        void OnInterval() {
+            currentTarget?.TakeDamage(damagePerTick);
         }
 
         void CleanUp() {
+            timer = null;
             currentTarget = null;
             OnCompleted?.Invoke(this);
         }
+
+        public void Cancel() => timer?.Stop();
     }
 }

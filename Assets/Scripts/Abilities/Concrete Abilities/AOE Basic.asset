@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: AOE Basic
   m_EditorClassIdentifier: 
   label: AOE Basic
-  castSfx: {fileID: 8300000, guid: b50a4a7d13a53244fa9cd6853bee2ca8, type: 3}
+  castSfx: {fileID: 8300000, guid: c78c8d3a15b8023448cc250af43c09e5, type: 3}
   castVfx: {fileID: 7647375919561907788, guid: 035ce8c9cfc34104991ce416daf8aebe, type: 3}
   runningVfx: {fileID: 0}
   effects:
