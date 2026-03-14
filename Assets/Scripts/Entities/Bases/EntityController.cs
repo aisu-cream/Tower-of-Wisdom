@@ -26,9 +26,6 @@ public class EntityController : MonoBehaviour {
     Vector3 surfaceNormal;
     Vector3 surfaceVelocity;
 
-    float speedModifier = 1f;
-    float lerpModifier = 1f;
-
     [Min(0)] public float gravity = 49f;
     [Min(0)] public float maxFallSpeed = 30f;
     [Range(0, 90)] public float slopeLimit = 45f;

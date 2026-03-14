@@ -14,7 +14,7 @@ public class OccludeVisionBlocks : MonoBehaviour {
         if (!brain) return;
 
         cmCam = brain.ActiveVirtualCamera as CinemachineCamera;
-        if (!cmCam) return;
+        if (!cmCam || !cmCam.LookAt) return;
 
         Vector3 pos = Camera.main.transform.position;
         Vector3 target = cmCam.LookAt.GetComponent<Collider>().bounds.center;

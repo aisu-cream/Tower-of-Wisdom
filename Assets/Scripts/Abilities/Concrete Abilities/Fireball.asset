@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 554476ba8c4e06c44883025bc7d68eb0, type: 3}
+  m_Name: Fireball
+  m_EditorClassIdentifier: 
+  label: Fireball
+  castSfx: {fileID: 8300000, guid: 0ce1ed91320d082469aa40663629a590, type: 3}
+  castVfx: {fileID: 0}
+  runningVfx: {fileID: 6978219959929540622, guid: 798f6b705349d6c4da3543865f0496ae, type: 3}
+  effects:
+  - rid: 5490353329413554264
+  - rid: 5490353329413554265
+  targetingStrategy:
+    rid: 5490353329413554297
+  references:
+    version: 2
+    RefIds:
+    - rid: 5490353329413554264
+      type: {class: DamageEffectFactory, ns: , asm: Assembly-CSharp}
+      data:
+        amount: 10
+    - rid: 5490353329413554265
+      type: {class: KnockbackEffectFactory, ns: , asm: Assembly-CSharp}
+      data:
+        impulseMagnitude: 20
+    - rid: 5490353329413554297
+      type: {class: SelfTargeting, ns: , asm: Assembly-CSharp}
+      data: 
