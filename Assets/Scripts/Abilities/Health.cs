@@ -2,15 +2,31 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class Health : MonoBehaviour, IAffectable {
-    float health = 100;
+    [SerializeField] float initialHealth = 100;
+    float health;
+
     readonly List<IEffect> activeEffects = new();
 
-    private EntityController controller;
-    private Rigidbody rb;
+    EntityController controller;
+    Rigidbody rb;
 
     void Awake() {
         controller = GetComponent<EntityController>();
         rb = GetComponent<Rigidbody>();
+        health = initialHealth;
+    }
+
+    void OnValidate(){
+        if (initialHealth < health)
+            health = initialHealth;        
+    }
+
+    public float GetHealth() {
+        return health;
+    }
+
+    public float GetInitialHealth() {
+        return initialHealth;
     }
 
     public void TakeDamage(float amount) {
