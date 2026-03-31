@@ -10,6 +10,8 @@ public class Health : MonoBehaviour, IAffectable {
     EntityController controller;
     Rigidbody rb;
 
+    bool dead;
+
     void Awake() {
         controller = GetComponent<EntityController>();
         rb = GetComponent<Rigidbody>();
@@ -42,10 +44,11 @@ public class Health : MonoBehaviour, IAffectable {
         rb.AddForce(impulse, ForceMode.Impulse);
     }
 
-    public void ApplyEffect(TargetingManager caster, IEffect effect) {
+    public void ApplyEffect(GameObject caster, GameObject source, IEffect effect) {
+        if (dead) return;
         effect.OnCompleted += RemoveEffect;
         activeEffects.Add(effect);
-        effect.Apply(caster, this);
+        //effect.Apply(caster, source, GetComponent<IEntity>());
     }
 
     void RemoveEffect(IEffect effect) {
@@ -54,7 +57,7 @@ public class Health : MonoBehaviour, IAffectable {
     }
 
     void Die() {
-        Debug.Log(gameObject + " died.");
+        Debug.Log(gameObject.name + " died.");
 
         foreach (var effect in activeEffects) {
             effect.OnCompleted -= RemoveEffect;
@@ -63,5 +66,7 @@ public class Health : MonoBehaviour, IAffectable {
 
         activeEffects.Clear();
         Destroy(gameObject);
+
+        dead = true;
     }
 }

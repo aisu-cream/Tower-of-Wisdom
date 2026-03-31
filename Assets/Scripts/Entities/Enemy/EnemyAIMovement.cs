@@ -12,7 +12,7 @@ public class EnemyAIMovement : MonoBehaviour {
     //StateMachine stateMachine;
     //NavMeshAgent agent;
 
-    //IEntity? target = null!;
+    //GameObject? target = null!;
     //ContactFilter2D searchFilter = new();
 
     //[Header("Locomotion Settings")]
@@ -63,7 +63,7 @@ public class EnemyAIMovement : MonoBehaviour {
     //void Any(IState to, FuncPredicate condition) => stateMachine.AddAnyTransition(to, condition);
 
     //void OnValidate() => searchFilter.SetLayerMask(searchMask);
-    
+
     //class IdleState : BaseState {
 
     //    EnemyAIMovement movement;
@@ -72,27 +72,27 @@ public class EnemyAIMovement : MonoBehaviour {
     //    public IdleState(EntityController controller, EnemyAIMovement movement) : base(controller) { this.movement = movement; }
 
     //    public override void OnEnter() {
-    //        entity.target = null;
+    //        movement.target = null;
     //        searchRoutine = movement.StartCoroutine(Search());
     //    }
 
     //    public override void FixedUpdate() => controller.Move(Vector2.zero, 0, 0, decelRate, 0.5f);
 
-    //    public override void OnExit() => entity.StopCoroutine(searchRoutine);
+    //    public override void OnExit() => movement.StopCoroutine(searchRoutine);
 
     //    IEnumerator Search() {
-    //        Collider[] entities = Physics.OverlapSphere(entity.transform.position, entity.targetDetectRadius, entity.searchMask);
+    //        Collider[] entities = Physics.OverlapSphere(movement.transform.position, movement.targetDetectRadius, movement.searchMask);
 
     //        IEntity closestVisibleEntity = null!;
     //        float minDistance = float.MaxValue;
 
-    //        for (int i = 0; i < entities.Length && i < entity.maxSearchConstraint; i++) {
+    //        for (int i = 0; i < entities.Length && i < movement.maxSearchConstraint; i++) {
     //            IEntity targetEntity = entities[i].GetComponent<IEntity>();
 
-    //            Vector3 pos = entity.GetVisionPosition();
+    //            Vector3 pos = movement.GetVisionPosition();
     //            Vector3 diff = targetEntity.GetVisionPosition() - pos;
 
-    //            if (Vector3.Dot(entity.GetFacingDirection(), diff) >= 0 && Physics.Raycast(pos, diff, out RaycastHit hit, entity.targetDetectRadius, entity.confirmMask)) {
+    //            if (Vector3.Dot(movement.GetFacingDirection(), diff) >= 0 && Physics.Raycast(pos, diff, out RaycastHit hit, movement.targetDetectRadius, movement.confirmMask)) {
     //                float distance = diff.magnitude;
 
     //                if (hit.transform.gameObject == entities[i].transform.gameObject && minDistance > distance) {
@@ -104,7 +104,7 @@ public class EnemyAIMovement : MonoBehaviour {
     //            yield return null;
     //        }
 
-    //        entity.target = closestVisibleEntity;
+    //        movement.target = closestVisibleEntity;
     //        searchRoutine = movement.StartCoroutine(Search());
     //    }
     //}

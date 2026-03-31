@@ -10,41 +10,36 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 554476ba8c4e06c44883025bc7d68eb0, type: 3}
-  m_Name: Fireball
+  m_Name: Explosion
   m_EditorClassIdentifier: 
-  label: Fireball
+  label: Explosion
   castSfx: {fileID: 0}
-  castVfx: {fileID: 0}
+  castVfx: {fileID: 358637981425055526, guid: 8eb503696b886e04faff8fc0f480d473, type: 3}
   runningVfx: {fileID: 0}
   castTime: 0.1
-  cooldown: 0
+  cooldown: 1
   preconditions: []
   castEffects: []
-  targetConstraints:
-  - rid: 5490353691068989527
+  targetConstraints: []
   executionEffects:
-  - rid: 5490353691068989519
-  - rid: 5490353715952746575
+  - rid: 5490353691068989541
+  - rid: 5490353691068989543
   targetingStrategy:
-    rid: 5490353440007651420
+    rid: 5490353691068989540
   references:
     version: 2
     RefIds:
-    - rid: 5490353440007651420
-      type: {class: ProjectileTargeting, ns: , asm: Assembly-CSharp}
+    - rid: 5490353691068989540
+      type: {class: ExplosionTargeting, ns: , asm: Assembly-CSharp}
       data:
-        projectilePrefab: {fileID: 3878922489185744025, guid: 7361e3f410341a2499d8c6c0d91b008d, type: 3}
-        speed: 10
-    - rid: 5490353691068989519
+        radius: 5
+    - rid: 5490353691068989541
       type: {class: DamageEffectFactory, ns: , asm: Assembly-CSharp}
       data:
-        amount: 10
-    - rid: 5490353691068989527
-      type: {class: ExcludeSelfConstraint, ns: , asm: Assembly-CSharp}
-      data: 
-    - rid: 5490353715952746575
+        amount: 40
+    - rid: 5490353691068989543
       type: {class: DamageOverTimeEffectFactory, ns: , asm: Assembly-CSharp}
       data:
-        duration: 5
-        tickInterval: 1
-        damagePerTick: 5
+        duration: 3
+        tickInterval: 0.5
+        damagePerTick: 1

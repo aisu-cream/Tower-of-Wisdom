@@ -25,9 +25,9 @@ public class TargetingStrategyDrawer : PropertyDrawer {
         );
 
         Rect contentRect = new Rect(
-            fieldRect.x,
-            fieldRect.y + EditorGUIUtility.singleLineHeight + 2,
-            fieldRect.width,
+            position.x,
+            position.y + EditorGUIUtility.singleLineHeight + 2,
+            position.width,
             fieldRect.height - EditorGUIUtility.singleLineHeight - 2
         );
 
@@ -59,9 +59,10 @@ public class TargetingStrategyDrawer : PropertyDrawer {
         }
 
         if (property.managedReferenceValue != null) {
-            EditorGUI.indentLevel++;
+            int oldIndent = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = 0;
             EditorGUI.PropertyField(contentRect, property, GUIContent.none, true);
-            EditorGUI.indentLevel--;
+            EditorGUI.indentLevel = oldIndent;
         }
 
         EditorGUI.EndProperty();

@@ -5439,7 +5439,7 @@ GameObject:
   - component: {fileID: 1305061987}
   - component: {fileID: 1305061996}
   - component: {fileID: 1305061995}
-  - component: {fileID: 1305061994}
+  - component: {fileID: 1305061997}
   m_Layer: 6
   m_Name: Player
   m_TagString: Untagged
@@ -5597,18 +5597,6 @@ Transform:
   - {fileID: 248133817}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1305061994
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1305061986}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5978c1e1fe2d1af4e9723559f1ddc53a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &1305061995
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5624,7 +5612,8 @@ MonoBehaviour:
   abilities:
   - {fileID: 11400000, guid: e94030e38b5995f40aa26d4baea1af01, type: 2}
   - {fileID: 11400000, guid: d576a0490cbb0994980d3241942d55f6, type: 2}
-  targetingManager: {fileID: 1305061996}
+  - {fileID: 11400000, guid: 2e0f198dfa1d2034dbf2390e9c25972d, type: 2}
+  - {fileID: 11400000, guid: 7c6caaa639894e242858e7fc10010637, type: 2}
 --- !u!114 &1305061996
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5637,6 +5626,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4689d29e86efea04280c05ec7da3661f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &1305061997
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1305061986}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4df23682769c954d9af9e5da502e21c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 100
 --- !u!1 &1375286170
 GameObject:
   m_ObjectHideFlags: 0
@@ -6775,7 +6777,7 @@ CapsuleCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6308079871264817206}
-  m_Material: {fileID: 13400000, guid: 693cdd4ffb863a8459b6d8f62b9d2590, type: 2}
+  m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -7487,9 +7489,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6308079871264817206}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5978c1e1fe2d1af4e9723559f1ddc53a, type: 3}
+  m_Script: {fileID: 11500000, guid: e4df23682769c954d9af9e5da502e21c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  maxHealth: 100
 --- !u!33 &6311170719571702876
 MeshFilter:
   m_ObjectHideFlags: 0

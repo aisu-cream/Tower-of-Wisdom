@@ -1,5 +1,3 @@
-using UnityEngine;
-
 public abstract class TargetingStrategy {
     protected Ability ability;
     protected TargetingManager targetingManager;

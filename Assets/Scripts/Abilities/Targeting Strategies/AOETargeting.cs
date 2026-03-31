@@ -50,11 +50,11 @@ public class AOETargeting : TargetingStrategy {
     void OnClick(Vector3 position) {
         if (isTargeting) {
             var targets = Physics.OverlapSphere(position, aoeRadius)
-                .Select(c => c.GetComponent<IAffectable>())
-                .OfType<IAffectable>();
+                .Select(c => c.GetComponent<IEntity>())
+                .OfType<IEntity>();
 
             foreach (var target in targets)
-                ability.Execute(targetingManager, target);
+                ability.Execute(position, target);
 
             Cancel();
         }

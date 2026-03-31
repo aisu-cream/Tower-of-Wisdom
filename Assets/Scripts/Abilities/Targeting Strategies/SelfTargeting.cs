@@ -3,7 +3,8 @@ public class SelfTargeting : TargetingStrategy {
         this.ability = ability;
         this.targetingManager = targetingManager;
 
-        if (targetingManager.transform.TryGetComponent<IAffectable>(out var target))
-            ability.Execute(targetingManager, target);
+        var target = ability.GetCaster();
+        if (target != null)
+            ability.Execute(target.GetPosition(), target);
     }
 }

@@ -7,7 +7,7 @@ public interface IEffectFactory {
 }
 
 public interface IEffect {
-    void Apply(TargetingManager caster, IAffectable target);
+    void Apply(IEntity caster, Vector3 source, IEntity target);
     void Cancel();
     event Action<IEffect> OnCompleted;
 }
@@ -25,7 +25,7 @@ public class DamageEffectFactory : IEffectFactory {
 
         public event Action<IEffect> OnCompleted;
 
-        public void Apply(TargetingManager caster, IAffectable target) {
+        public void Apply(IEntity caster, Vector3 source, IEntity target) {
             target.TakeDamage(amount);
             OnCompleted?.Invoke(this);
         }
@@ -50,14 +50,12 @@ public class KnockbackEffectFactory : IEffectFactory {
 
         public event Action<IEffect> OnCompleted;
 
-        public void Apply(TargetingManager caster, IAffectable target) {
+        public void Apply(IEntity caster, Vector3 source, IEntity target) {
             if (target == null) return;
-            if (caster != null) target.Push(defaultDir * impulseMagnitude);
 
-            MonoBehaviour targetMb = target as MonoBehaviour;
-            Vector3 dir = targetMb.transform.position - caster.transform.position;
+            Vector3 dir = target.GetPosition() - caster.GetPosition();
 
-            target.Push(dir * impulseMagnitude);
+            target.ApplyKnockback(dir * impulseMagnitude);
             OnCompleted?.Invoke(this);
         }
 
@@ -87,11 +85,11 @@ public class DamageOverTimeEffectFactory : IEffectFactory {
         public float damagePerTick;
 
         IntervalTimer timer;
-        IAffectable currentTarget;
+        IEntity currentTarget;
 
         public event Action<IEffect> OnCompleted;
 
-        public void Apply(TargetingManager caster, IAffectable target) {
+        public void Apply(IEntity caster, Vector3 source, IEntity target) {
             currentTarget = target;
             timer = new IntervalTimer(duration, tickInterval);
             timer.OnInterval = OnInterval;
@@ -99,9 +97,7 @@ public class DamageOverTimeEffectFactory : IEffectFactory {
             timer.Start();
         }
 
-        void OnInterval() {
-            currentTarget?.TakeDamage(damagePerTick);
-        }
+        void OnInterval() => currentTarget?.TakeDamage(damagePerTick);
 
         void CleanUp() {
             timer = null;
@@ -109,6 +105,8 @@ public class DamageOverTimeEffectFactory : IEffectFactory {
             OnCompleted?.Invoke(this);
         }
 
-        public void Cancel() => timer?.Stop();
+        public void Cancel() {
+            timer?.Stop();
+        }
     }
 }
