@@ -4,8 +4,8 @@ using UnityEngine;
 public class Entity : MonoBehaviour, IEntity {
 
     [SerializeField] float maxHealth;
-    float health;
-
+    [SerializeField] float health;
+    
     [SerializeField] EntityLayerMask entityMask;
     EntityController controller;
 
@@ -20,6 +20,10 @@ public class Entity : MonoBehaviour, IEntity {
 
     public float GetHealth() {
         return health;
+    }
+
+    public float GetInitialHealth() {
+        return maxHealth;
     }
 
     EntityLayerMask IEntity.GetType() {

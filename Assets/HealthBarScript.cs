@@ -9,7 +9,7 @@ public class HealthBarScript : MonoBehaviour
     private float maxHealth;
     [SerializeField] private Slider healthBarSlider;
     [SerializeField] private TextMeshProUGUI healthBarValueText;
-    [SerializeField] private Health health;
+    [SerializeField] private IEntity health;
 
     // Update is called once per frame
     void Update()
