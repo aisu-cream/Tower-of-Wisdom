@@ -1294,7 +1294,7 @@ GameObject:
   - component: {fileID: 1463101370}
   - component: {fileID: 1463101369}
   - component: {fileID: 1463101368}
-  - component: {fileID: 1463101367}
+  - component: {fileID: 1463101377}
   m_Layer: 6
   m_Name: Player (1)
   m_TagString: Untagged
@@ -1302,19 +1302,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1463101367
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1463101366}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5978c1e1fe2d1af4e9723559f1ddc53a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  initialHealth: 100
 --- !u!114 &1463101368
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1493,6 +1480,20 @@ Transform:
   - {fileID: 2070241184}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1463101377
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1463101366}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4df23682769c954d9af9e5da502e21c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 100
+  health: 100
 --- !u!1 &1599552055
 GameObject:
   m_ObjectHideFlags: 0
@@ -1974,7 +1975,6 @@ GameObject:
   - component: {fileID: 2070241186}
   - component: {fileID: 2070241185}
   - component: {fileID: 2070241188}
-  - component: {fileID: 2070241189}
   m_Layer: 5
   m_Name: WorldSpaceBar
   m_TagString: Untagged
@@ -2081,21 +2081,13 @@ MonoBehaviour:
   <CurrentValue>k__BackingField: 100
   _topBar: {fileID: 1088414674}
   _bottomBar: {fileID: 1322794654}
+  _topBarImage: {fileID: 1088414675}
+  _bottomBarImage: {fileID: 1322794655}
   _animationspeed: 10
---- !u!114 &2070241189
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2070241183}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e4df23682769c954d9af9e5da502e21c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  maxHealth: 100
-  health: 0
+  _entity: {fileID: 0}
+  _highHealthColor: {r: 0, g: 1, b: 0, a: 1}
+  _midHealthColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  _lowHealthColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
