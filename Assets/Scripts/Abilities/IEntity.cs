@@ -35,6 +35,7 @@ public readonly struct EntityLayerMask {
 
 public interface IEntity {
     float GetHealth();
+    float GetInitialHealth();
     bool IsAlive();
     EntityLayerMask GetType();
     Vector3 GetPosition();

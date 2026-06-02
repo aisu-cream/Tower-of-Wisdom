@@ -27,6 +27,10 @@ public class Entity : MonoBehaviour, IEntity {
     public bool IsAlive() {
         return health > 0;
     }
+    
+    public float GetInitialHealth() {
+        return maxHealth;
+    }
 
     EntityLayerMask IEntity.GetType() {
         return entityMask;
