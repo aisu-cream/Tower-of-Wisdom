@@ -1,48 +1,45 @@
-using System.Collections.Generic;
 using UnityEngine;
 using ImprovedTimers;
 
-[CreateAssetMenu(fileName = "Ability", menuName = "ScriptableObjects/Ability")]
-public class Ability : ScriptableObject {
-    public string label;
+/**
+ * The most basic type of ability where you consume cost only once and apply single set of predefined effects to target(s).
+ * If more complex abilities are needed, such as an ability that continuously consume cost or an ability that applies different effects based on the target, 
+ * use different IAbility implementations.
+ * To use this class, one must supply abilityData and abilityBehaviour.
+ */
+[System.Serializable]
+public class Ability : IAbility {
 
-    [Header("Visuals")]
-    [SerializeField] AudioClip castSfx;
-    [SerializeField] GameObject castVfx;
-    [SerializeField] GameObject runningVfx;
+    [SerializeField] AbilityData abilityData;
+    [SerializeReference] AbilityBehaviour behaviour;
 
-    [Header("Timings")]
-    [SerializeField, Min(0)] float castTime = 0.1f;
-    [SerializeField, Min(0)] float cooldown = 1f;
+    TargetingManager targetingManager;
+
     CountdownTimer castTimer;
     CountdownTimer cooldownTimer;
 
-    [Header("Effects")]
-    [SerializeReference] List<IPrecondition> preconditions = new();
-    [SerializeReference] List<IEffectFactory> castEffects = new();
-    [SerializeReference] List<ITargetConstraint> targetConstraints = new();
-    [SerializeReference] List<IEffectFactory> executionEffects = new();
-
-    [Header("Targeting")]
-    [SerializeReference] TargetingStrategy targetingStrategy;
-    TargetingManager targetingManager;
+    IAbilityTrigger trigger;
 
     IEntity caster;
 
-    void OnEnable() {
-        if (string.IsNullOrEmpty(label)) label = name;
+    public IEntity GetCaster() {
+        return caster;
+    }
 
-        castTimer = new CountdownTimer(castTime);
-        castTimer.OnTimerStop = Target;
-
-        cooldownTimer = new CountdownTimer(cooldown);
+    public void OverrideCaster(IEntity entity) {
+        caster = entity;
     }
 
     public void Cast(IEntity caster, TargetingManager targetingManager) {
-        if (!cooldownTimer.IsFinished) return;
+        castTimer ??= new(abilityData.CastDelay) { OnTimerStop = Target };
+        cooldownTimer ??= new(abilityData.Cooldown);
+
+        trigger ??= new AbilityTrigger(this);
+
+        if (!castTimer.IsFinished || !cooldownTimer.IsFinished) return;
         if (caster == null || targetingManager == null) return;
 
-        foreach (var precondition in preconditions) {
+        foreach (var precondition in abilityData.Preconditions) {
             if (!precondition.Evaluate(caster))
                 return;
         }
@@ -50,77 +47,113 @@ public class Ability : ScriptableObject {
         this.targetingManager = targetingManager;
         this.caster = caster;
         
-        castTimer.Reset(castTime);
+        castTimer.Reset(abilityData.CastDelay);
         castTimer.Start();
     }
 
-    public bool CanExecute(IEntity target) {
-        foreach (var targetConstraint in targetConstraints) {
-            if (!targetConstraint.Evaluate(caster, target))
-                return false;
-        }
-
-        return true;
-    }
-
-    public void Execute(Vector3 source, IEntity target) {
-        if (target == null) return;
-
-        foreach (var effect in executionEffects) {
-            var runtimeEffect = effect.Create();
-            target.ApplyEffect(caster, source, runtimeEffect);
-        }
-
-        HandleVFX(target);
-    }
-
-    public IEntity GetCaster() {
-        return caster;
-    }
-
     void Target() {
-        if (targetingManager == null) return;
+        if (targetingManager == null || caster == null || !caster.IsAlive()) 
+            return;
 
-        if (castSfx)
-            HandleSFX();
+        ParticleSystem castVfx = abilityData.CastVfx;
+        AudioClip castSfx = abilityData.CastSfx;
 
-        foreach (var effect in castEffects) {
-            var runtimeEffect = effect.Create();
-            runtimeEffect.Apply(caster, caster.GetPosition(), caster);
+        if (castVfx) {
+            var castInstance = Object.Instantiate(castVfx, targetingManager.transform.position, Quaternion.identity);
+            Object.Destroy(castInstance, castInstance.main.duration);
         }
 
-        targetingStrategy?.Start(this, targetingManager);
+        if (castSfx) {
+            GameObject o = new GameObject("Ability Audio");
+            o.transform.position = targetingManager.transform.position;
 
-        cooldownTimer.Reset(cooldown);
+            AudioSource src = o.AddComponent<AudioSource>();
+            src.clip = castSfx;
+            src.spatialBlend = 1f;
+
+            src.minDistance = 20;
+            src.maxDistance = 100;
+
+            src.Play();
+            Object.Destroy(o, src.clip.length);
+        }
+
+        behaviour?.Start(this, trigger, targetingManager);
+
+        cooldownTimer.Reset(abilityData.Cooldown);
         cooldownTimer.Start();
     }
 
-    void HandleVFX(IEntity target) {
-        var targetMb = target as MonoBehaviour;
-        if (targetMb == null) return;
+    void Execute(EffectContext context) {
+        if (context.Target == null) return;
 
-        if (castVfx)
-            Instantiate(castVfx, targetMb.transform.position, Quaternion.identity);
+        foreach (var targetCondition in abilityData.TargetConditions) {
+            if (!targetCondition.Evaluate(context.Target))
+                return;
+        }
 
-        if (runningVfx) {
-            var runningVfxInstance = Instantiate(runningVfx, targetMb.transform);
-            runningVfxInstance.transform.Translate(Vector3.up, Space.World);
-            Destroy(runningVfxInstance, 3f);
+        foreach (var effect in abilityData.Effects) {
+            var runtimeEffect = effect.Clone();
+            runtimeEffect.Apply(context);
+            context.Target.AlertEffect(runtimeEffect);
+        }
+
+        context.Target.AlertThreat(caster);
+
+        ParticleSystem impactVfx = abilityData.ImpactVfx;
+        AudioClip impactSfx = abilityData.ImpactSfx;
+
+        if (impactVfx) {
+            var castInstance = Object.Instantiate(impactVfx, context.Target.GetPosition(), Quaternion.identity);
+            Object.Destroy(castInstance, castInstance.main.duration);
+        }
+
+        if (impactSfx) {
+            GameObject o = new GameObject("Ability Audio");
+            o.transform.position = targetingManager.transform.position;
+
+            AudioSource src = o.AddComponent<AudioSource>();
+            src.clip = impactSfx;
+            src.spatialBlend = 1f;
+
+            src.minDistance = 20;
+            src.maxDistance = 100;
+
+            src.Play();
+            Object.Destroy(o, src.clip.length);
         }
     }
 
-    void HandleSFX() {
-        GameObject o = new GameObject("Ability Audio");
-        o.transform.position = targetingManager.transform.position;
+    /**
+     * A Trigger that allows calling the ability's secure functionalities: consume cost and execute.
+     * Consume cost is expected to be called at the start, while the execute function can be called whenever.
+     */
+    class AbilityTrigger : IAbilityTrigger {
+        Ability ability;
 
-        AudioSource src = o.AddComponent<AudioSource>();
-        src.clip = castSfx;
-        src.spatialBlend = 1f;
+        public AbilityTrigger(Ability ability) {
+            this.ability = ability;
+        }
 
-        src.minDistance = 20;
-        src.maxDistance = 100;
+        public bool CanConsumeCost() {
+            foreach (var precondition in ability.abilityData.Preconditions) {
+                if (!precondition.Evaluate(ability.caster))
+                    return false;
+            }
 
-        src.Play();
-        Destroy(o, src.clip.length);
+            return true;
+        }
+
+        public void ConsumeCost(EffectContext context) {
+            foreach (IEffect cost in ability.abilityData.Costs) {
+                IEffect costInstance = cost.Clone();
+                costInstance.Apply(context);
+                ability.GetCaster().AlertEffect(costInstance);
+            }
+        }
+
+        public void TryExecute(EffectContext context) {
+            ability.Execute(context);
+        }
     }
 }

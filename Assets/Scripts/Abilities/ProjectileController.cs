@@ -6,10 +6,12 @@ public class ProjectileController : MonoBehaviour {
     TargetingManager targetingManager;
 
     Ability owner;
+    IAbilityTrigger trigger;
     Vector3 velocity;
 
-    public void Initialize(Ability owner, Vector3 velocity) {
+    public void Initialize(Ability owner, IAbilityTrigger trigger, Vector3 velocity) {
         this.owner = owner;
+        this.trigger = trigger;
         this.velocity = velocity;
     }
 
@@ -25,13 +27,9 @@ public class ProjectileController : MonoBehaviour {
     void OnTriggerEnter(Collider other) {
         IEntity target = other.GetComponent<IEntity>();
 
-        if (owner != null && owner.CanExecute(target)) {
-            owner.Execute(transform.position, target);
-            velocity = Vector3.zero;
+        trigger.TryExecute(new(ability.GetCaster(), target, target.GetPosition() - transform.position));
+        velocity = Vector3.zero;
 
-            if (ability != null) {
-                ability.Cast(owner.GetCaster(), targetingManager);
-            }
-        }
+        ability?.Cast(owner.GetCaster(), targetingManager);
     }
 }

@@ -9,6 +9,8 @@ public class PlayerMovement : MonoBehaviour {
     StateMachine stateMachine;
     Animator animator;
 
+    IEntity self;
+
     [Header("Locomotion Settings")]
     [SerializeField] protected MovementSettings walkSettings = new(5, 8, 8);
     [SerializeField] protected MovementSettings sprintSettings = new(8, 10, 10);
@@ -21,13 +23,14 @@ public class PlayerMovement : MonoBehaviour {
     #endregion
 
     void Awake() {
+        self = GetComponent<IEntity>();
         controller = GetComponent<EntityController>();
-        stateMachine = new();
         animator = GetComponent<Animator>();
+        stateMachine = new();
 
-        var groundState = new GroundState(controller, this);
-        var jumpState = new JumpState(controller, this);
-        var fallState = new FallState(controller, this);
+        var groundState = new GroundState(controller, self, this);
+        var jumpState = new JumpState(controller, self, this);
+        var fallState = new FallState(controller, self, this);
 
         At(groundState, fallState, new FuncPredicate(() => !controller.isGrounded));
         At(groundState, jumpState, new FuncPredicate(() => inputReader.jumpHeld));
@@ -66,7 +69,7 @@ public class PlayerMovement : MonoBehaviour {
 
         PlayerMovement movement;
 
-        public GroundState(EntityController controller, PlayerMovement movement) : base(controller) => this.movement = movement;
+        public GroundState(EntityController controller, IEntity self, PlayerMovement movement) : base(controller, self) => this.movement = movement;
 
         public override void FixedUpdate() {
             if (movement.inputReader.runHeld)
@@ -80,7 +83,7 @@ public class PlayerMovement : MonoBehaviour {
 
         PlayerMovement movement;
 
-        public JumpState(EntityController controller, PlayerMovement movement) : base(controller) => this.movement = movement;
+        public JumpState(EntityController controller, IEntity self, PlayerMovement movement) : base(controller, self) => this.movement = movement;
 
         public override void OnEnter() {
             float jumpStrength = movement.jumpStrength;
@@ -95,7 +98,7 @@ public class PlayerMovement : MonoBehaviour {
         PlayerMovement movement;
         float coyoteTimeCounter = 0;
 
-        public FallState(EntityController controller, PlayerMovement movement) : base(controller) => this.movement = movement;
+        public FallState(EntityController controller, IEntity self, PlayerMovement movement) : base(controller, self) => this.movement = movement;
 
         public bool CanEnterCoyoteTime() => coyoteTimeCounter + movement.coyoteTime > Time.time;
 

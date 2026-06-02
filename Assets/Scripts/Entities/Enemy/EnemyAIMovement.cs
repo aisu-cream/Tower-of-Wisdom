@@ -7,203 +7,193 @@ using UnityEngine.AI;
 [RequireComponent(typeof(NavMeshAgent)), RequireComponent(typeof(EntityController))]
 public class EnemyAIMovement : MonoBehaviour {
 
-    //#region Fields
-    //EntityController controller;
-    //StateMachine stateMachine;
-    //NavMeshAgent agent;
+    #region Fields
+    EntityController controller;
+    StateMachine stateMachine;
+    NavMeshAgent agent;
 
-    //GameObject? target = null!;
-    //ContactFilter2D searchFilter = new();
+    IEntity self;
+    IEntity? target = null!;
+    ContactFilter2D searchFilter = new();
 
-    //[Header("Locomotion Settings")]
-    //[SerializeField] protected MovementSettings idleSettings = new(4, 8, 8);
-    //[SerializeField] protected MovementSettings chaseSettings = new(6, 6, 6);
+    [Header("Locomotion Settings")]
+    [SerializeField] protected MovementSettings idleSettings = new(4, 8, 8);
+    [SerializeField] protected MovementSettings chaseSettings = new(6, 6, 6);
 
-    //[Header("Air Settings")]
-    //[Min(0)] public float jumpStrength = 15f;
-    //[Min(0)] public float jumpNlagTime = 0.15f;
-    //bool jumpCommitted;
-    //float jumpStartTimer = 0;
+    [Header("Air Settings")]
+    [Min(0)] public float jumpStrength = 15f;
+    [Min(0)] public float jumpNlagTime = 0.15f;
+    bool jumpCommitted;
+    float jumpStartTimer = 0;
 
-    //[Header("Logic Controller")]
-    //[SerializeField, Min(0)] float targetDetectRadius = 5f;
-    //[SerializeField, Min(0)] int maxSearchConstraint = 10;
-    //[SerializeField] LayerMask searchMask;
-    //[SerializeField] LayerMask confirmMask;
-    //float distanceFromTarget;
-    //#endregion
+    [Header("Logic Controller")]
+    [SerializeField, Min(0)] float targetDetectRadius = 5f;
+    [SerializeField, Min(0)] int maxSearchConstraint = 10;
+    [SerializeField] LayerMask searchMask;
+    [SerializeField] LayerMask confirmMask;
+    float distanceFromTarget;
+    #endregion
 
-    //// Start is called once before the first execution of Update after the MonoBehaviour is created
-    //void Awake() {
-    //    agent = GetComponent<NavMeshAgent>();
-    //    controller = GetComponent<EntityController>();
-    //    stateMachine = new();
+    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    void Awake() {
+        self = GetComponent<IEntity>();
+        agent = GetComponent<NavMeshAgent>();
+        controller = GetComponent<EntityController>();
+        stateMachine = new();
 
-    //    agent.updatePosition = false;
-    //    agent.updateRotation = false;
+        agent.updatePosition = false;
+        agent.updateRotation = false;
+        
+        searchFilter.SetLayerMask(searchMask);
+    }
 
-    //    var idleState = new IdleState(controller, this);
-    //    var chaseState = new ChaseState(controller, this);
-    //    var combatState = new CombatState(controller, this);
+    void Start() {
+        var idleState = new IdleState(controller, self, this);
+        var chaseState = new ChaseState(controller, self, this);
 
-    //    At(idleState, combatState, new FuncPredicate(() => target != null));
+        At(idleState, chaseState, new FuncPredicate(() => target != null));
+        At(chaseState, idleState, new FuncPredicate(() => target == null || !agent.isOnOffMeshLink && distanceFromTarget > targetDetectRadius * 2));
 
-    //    At(chaseState, idleState, new FuncPredicate(() => target == null || !agent.isOnOffMeshLink && distanceFromTarget > targetDetectRadius * 2));
-    //    At(chaseState, combatState, new FuncPredicate(() => null));
+        stateMachine.SetState(idleState);
+    }
 
-    //    At(combatState, idleState, new FuncPredicate(() => null));
-    //    At(combatState, chaseState, new FuncPredicate(() => null));
+    void Update() {
+        stateMachine.Update();
+    }
 
-    //    stateMachine.SetState(idleState);
-    //    searchFilter.SetLayerMask(searchMask);
-    //}
+    void FixedUpdate() {
+        stateMachine.FixedUpdate();
+    }
 
-    //void At(IState from, IState to, FuncPredicate condition) => stateMachine.AddTransition(from, to, condition);
+    void At(IState from, IState to, FuncPredicate condition) => stateMachine.AddTransition(from, to, condition);
 
-    //void Any(IState to, FuncPredicate condition) => stateMachine.AddAnyTransition(to, condition);
+    void Any(IState to, FuncPredicate condition) => stateMachine.AddAnyTransition(to, condition);
 
-    //void OnValidate() => searchFilter.SetLayerMask(searchMask);
+    void OnValidate() => searchFilter.SetLayerMask(searchMask);
 
-    //class IdleState : BaseState {
+    class IdleState : BaseState {
 
-    //    EnemyAIMovement movement;
-    //    Coroutine searchRoutine = null!;
+        EnemyAIMovement movement;
+        Coroutine searchRoutine = null!;
 
-    //    public IdleState(EntityController controller, EnemyAIMovement movement) : base(controller) { this.movement = movement; }
+        public IdleState(EntityController controller, IEntity self, EnemyAIMovement movement) : base(controller, self) { this.movement = movement; }
 
-    //    public override void OnEnter() {
-    //        movement.target = null;
-    //        searchRoutine = movement.StartCoroutine(Search());
-    //    }
+        public override void OnEnter() {
+            movement.target = null;
+            searchRoutine = movement.StartCoroutine(Search());
+        }
 
-    //    public override void FixedUpdate() => controller.Move(Vector2.zero, 0, 0, decelRate, 0.5f);
+        public override void FixedUpdate() => controller.Move(Vector2.zero, 0, 0, movement.idleSettings.decel, 0.5f);
 
-    //    public override void OnExit() => movement.StopCoroutine(searchRoutine);
+        public override void OnExit() => movement.StopCoroutine(searchRoutine);
 
-    //    IEnumerator Search() {
-    //        Collider[] entities = Physics.OverlapSphere(movement.transform.position, movement.targetDetectRadius, movement.searchMask);
+        IEnumerator Search() {
+            Collider[] entities = Physics.OverlapSphere(movement.transform.position, movement.targetDetectRadius, movement.searchMask);
 
-    //        IEntity closestVisibleEntity = null!;
-    //        float minDistance = float.MaxValue;
+            IEntity closestVisibleEntity = null!;
+            float minDistance = float.MaxValue;
 
-    //        for (int i = 0; i < entities.Length && i < movement.maxSearchConstraint; i++) {
-    //            IEntity targetEntity = entities[i].GetComponent<IEntity>();
+            for (int i = 0; i < entities.Length && i < movement.maxSearchConstraint; i++) {
+                IEntity targetEntity = entities[i].GetComponent<IEntity>();
 
-    //            Vector3 pos = movement.GetVisionPosition();
-    //            Vector3 diff = targetEntity.GetVisionPosition() - pos;
+                Vector3 pos = self.GetPosition();
+                Vector3 diff = targetEntity.GetPosition() - pos;
 
-    //            if (Vector3.Dot(movement.GetFacingDirection(), diff) >= 0 && Physics.Raycast(pos, diff, out RaycastHit hit, movement.targetDetectRadius, movement.confirmMask)) {
-    //                float distance = diff.magnitude;
+                if (Vector3.Dot(self.GetLookDirection(), diff) >= 0 && Physics.Raycast(pos, diff, out RaycastHit hit, movement.targetDetectRadius, movement.confirmMask)) {
+                    float distance = diff.magnitude;
 
-    //                if (hit.transform.gameObject == entities[i].transform.gameObject && minDistance > distance) {
-    //                    closestVisibleEntity = entities[i].GetComponent<IEntity>();
-    //                    minDistance = distance;
-    //                }
-    //            }
+                    if (hit.transform.gameObject == entities[i].transform.gameObject && minDistance > distance) {
+                        closestVisibleEntity = entities[i].GetComponent<IEntity>();
+                        minDistance = distance;
+                    }
+                }
 
-    //            yield return null;
-    //        }
+                yield return null;
+            }
 
-    //        movement.target = closestVisibleEntity;
-    //        searchRoutine = movement.StartCoroutine(Search());
-    //    }
-    //}
+            movement.target = closestVisibleEntity;
+            searchRoutine = movement.StartCoroutine(Search());
+        }
+    }
 
-    //class ChaseState : BaseState {
+    class ChaseState : BaseState {
 
-    //    EnemyAIMovement movement;
+        EnemyAIMovement movement;
 
-    //    public ChaseState(EntityController controller, EnemyAIMovement movement) : base(stateKey) { this.movement = movement; }
+        public ChaseState(EntityController controller, IEntity self, EnemyAIMovement movement) : base(controller, self) { this.movement = movement; }
 
-    //    public override void OnEnter() {
-    //        distanceFromTarget = 0;
-    //        jumpStartTimer = 0;
-    //    }
+        public override void OnEnter() {
+            movement.distanceFromTarget = 0;
+            movement.jumpStartTimer = 0;
+        }
 
-    //    public override void Update() {
-    //        if (!movement.target!.IsAlive()) {
-    //            movement.target = null;
-    //            return;
-    //        }
+        public override void Update() {
+            if (!movement.target!.IsAlive()) {
+                movement.target = null;
+                return;
+            }
 
-    //        movement.agent.nextPosition = movement.transform.position;
-    //        Vector3 pos = movement.target.transform.position;
+            movement.agent.nextPosition = movement.transform.position;
+            Vector3 pos = movement.target.GetPosition();
 
-    //        if (Physics.Raycast(pos + 0.1f * Vector3.up, Vector3.down, out RaycastHit hit))
-    //            entity.agent.SetDestination(hit.point);
-    //        else
-    //            entity.agent.SetDestination(pos);
+            if (Physics.Raycast(pos + 0.1f * Vector3.up, Vector3.down, out RaycastHit hit))
+                movement.agent.SetDestination(hit.point);
+            else
+                movement.agent.SetDestination(pos);
 
-    //        distanceFromTarget = (pos - entity.GetPosition()).magnitude;
-    //    }
+            movement.distanceFromTarget = (pos - self.GetPosition()).magnitude;
+        }
 
-    //    public override void FixedUpdate() {
-    //        // recover if agent is on the wrong navmesh surface
-    //        NavMeshHit hit;
-    //        float divergence = Vector3.Distance(entity.agent.nextPosition, entity.GetPosition());
+        public override void FixedUpdate() {
+            // recover if agent is on the wrong navmesh surface
+            float divergence = Vector3.Distance(movement.agent.nextPosition, self.GetPosition());
 
-    //        if (!entity.agent.isStopped && divergence > 0.5f && entity.IsGrounded() && NavMesh.SamplePosition(entity.GetPosition(), out hit, 0.4f, entity.agent.areaMask)) {
-    //            entity.agent.ResetPath();
-    //            entity.agent.Warp(hit.position);
-    //        }
+            if (divergence > 0.2f && controller.isGrounded) {
+                movement.agent.updatePosition = false;
+                movement.agent.Warp(self.GetPosition());
+            }
 
-    //        // move the agent accordingly
-    //        Vector2 dir = Vector2.zero;
-    //        float speed = targetSpeed;
+            // prevent entity from moving too much
+            Vector3 dir = Vector3.zero;
+            float speed = movement.chaseSettings.targetSpeed;
 
-    //        if (!movement.agent.isOnOffMeshLink) {
-    //            // accelerate only when the agent is not near the target so that it can stop exactly on the target
-    //            if (entity.agent.remainingDistance > entity.GetHorizontalVelocity().magnitude / accelRate + 0.1f) {
-    //                Vector3 planar = Vector3.ProjectOnPlane(entity.agent.desiredVelocity, Vector3.up);
-    //                dir = new Vector2(planar.x, planar.z);
-    //            }
-    //        }
-    //        else {
-    //            // perform custom jump logic
-    //            Vector3 dir3D = entity.agent.currentOffMeshLinkData.endPos - entity.GetPosition();
-    //            dir = new Vector2(dir3D.x, dir3D.z);
+            if (!movement.agent.isOnOffMeshLink) {
+                // accelerate only when the agent is not near the target so that it can stop exactly on the target
+                if (movement.agent.remainingDistance > controller.GetHorizontalVelocity().magnitude / movement.chaseSettings.accel + 0.1f)
+                    dir = Vector3.ProjectOnPlane(movement.agent.desiredVelocity, Vector3.up);
+            }
 
-    //            Vector3 originalDir3D = entity.agent.currentOffMeshLinkData.endPos - entity.agent.currentOffMeshLinkData.startPos;
-    //            Vector2 originalDir = new Vector2(originalDir3D.x, originalDir3D.z);
+            // perform custom jump logic
+            else if (controller.isGrounded) {
+                if (movement.jumpCommitted) {
+                    movement.agent.CompleteOffMeshLink();
+                    movement.jumpStartTimer = 0f;
+                    movement.jumpCommitted = false;
+                }
+                else {
+                    dir = movement.agent.currentOffMeshLinkData.endPos - self.GetPosition();
+                    Vector3 originalDir = movement.agent.currentOffMeshLinkData.endPos - movement.agent.currentOffMeshLinkData.startPos;
 
-    //            if (Vector2.Dot(dir, originalDir) < 0)
-    //                dir = Vector2.zero;
+                    if (Vector2.Dot(dir, originalDir) < 0)
+                        dir = Vector3.zero;
 
-    //            entity.agent.isStopped = true;
+                    speed = 0;
+                    movement.jumpStartTimer += Time.fixedDeltaTime;
 
-    //            if (entity.IsGrounded()) {
-    //                if (jumpCommitted) {
-    //                    entity.agent.CompleteOffMeshLink();
-    //                    jumpStartTimer = 0f;
-    //                    entity.agent.isStopped = false;
-    //                    jumpCommitted = false;
-    //                }
-    //                else {
-    //                    speed = 0;
-    //                    jumpStartTimer += Time.fixedDeltaTime;
+                    if (movement.jumpStartTimer >= movement.jumpNlagTime) {
+                        controller.Jump(movement.jumpStrength);
+                        movement.jumpCommitted = true;
+                    }
+                }
+            }
 
-    //                    if (jumpStartTimer >= jumpNlagTime) {
-    //                        entity.Jump(jumpStrength);
-    //                        jumpCommitted = true;
-    //                    }
-    //                }
-    //            }
-    //        }
+            // move the entity
+            if (controller.isGrounded)
+                controller.Move(dir, speed, movement.chaseSettings.accel, movement.chaseSettings.decel, 1f);
+            else
+                controller.Float(dir, speed, movement.chaseSettings.accel, movement.chaseSettings.decel, 1f);
+        }
 
-    //        // move the entity
-    //        if (entity.IsGrounded())
-    //            entity.Move(dir, speed, accelRate, decelRate, 1f);
-    //        else
-    //            entity.Float(dir, speed, accelRate, decelRate, 1f);
-    //    }
-
-    //    public override void OnExit() => entity.agent.ResetPath();
-    //}
-
-    //private class CombatState : BaseState {
-
-    //    private EnemyAI entity;
-
-    //    public CombatState(EnemyState stateKey, EnemyAI entity) : base(stateKey) => this.entity = entity;
-    //}
+        public override void OnExit() => movement.agent.ResetPath();
+    }
 }

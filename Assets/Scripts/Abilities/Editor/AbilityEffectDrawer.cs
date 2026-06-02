@@ -4,7 +4,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 
-[CustomPropertyDrawer(typeof(IEffectFactory), true)]
+[CustomPropertyDrawer(typeof(IEffect), true)]
 public class AbilityEffectDrawer : PropertyDrawer {
     static Dictionary<string, Type> typeMap;
 
@@ -22,7 +22,7 @@ public class AbilityEffectDrawer : PropertyDrawer {
             var menu = new GenericMenu();
            
             if (typeMap == null || typeMap.Count == 0) {
-                menu.AddDisabledItem(new GUIContent("No Ability Effects available"));
+                menu.AddDisabledItem(new GUIContent("No Ability Effects Available"));
                 menu.ShowAsContext();
                 return;
             }
@@ -54,7 +54,7 @@ public class AbilityEffectDrawer : PropertyDrawer {
     }
 
     static void BuildTypeMap() {
-        var baseType = typeof(IEffectFactory);
+        var baseType = typeof(IEffect);
         typeMap = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(asm => {
                 try { return asm.GetTypes(); }

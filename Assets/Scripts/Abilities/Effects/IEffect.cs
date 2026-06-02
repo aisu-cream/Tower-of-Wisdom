@@ -7,106 +7,70 @@ public interface IEffectFactory {
 }
 
 public interface IEffect {
-    void Apply(IEntity caster, Vector3 source, IEntity target);
+    void Apply(EffectContext context);
     void Cancel();
+    IEffect Clone();
     event Action<IEffect> OnCompleted;
 }
 
 [Serializable]
-public class DamageEffectFactory : IEffectFactory {
-    public float amount = 10;
+public class DamageEffect : IEffect {
+    [SerializeField] float amount = 10;
 
-    public IEffect Create() {
-        return new DamageEffect { amount = amount };
+    public event Action<IEffect> OnCompleted;
+
+    public void Apply(EffectContext context) {
+        context.Target.TakeDamage(amount);
+        OnCompleted?.Invoke(this);
     }
 
-    struct DamageEffect : IEffect {
-        public float amount;
-
-        public event Action<IEffect> OnCompleted;
-
-        public void Apply(IEntity caster, Vector3 source, IEntity target) {
-            target.TakeDamage(amount);
-            OnCompleted?.Invoke(this);
-        }
-
-        public void Cancel() { 
-            OnCompleted?.Invoke(this);
-        }
-    }
+    public void Cancel() => OnCompleted?.Invoke(this);
+    public IEffect Clone() => new DamageEffect() { amount = amount };
 }
 
 [Serializable]
-public class KnockbackEffectFactory : IEffectFactory {
-    public float impulseMagnitude = 1;
+public class KnockbackEffect : IEffect {
+    [SerializeField] float impulseMagnitude = 1;
+    public event Action<IEffect> OnCompleted;
 
-    public IEffect Create() {
-        return new KnockbackEffect { impulseMagnitude = impulseMagnitude };
+    public void Apply(EffectContext context) {
+        Vector3 dir = context.Direction;
+        context.Target.ApplyKnockback(dir * impulseMagnitude);
+        OnCompleted?.Invoke(this);
     }
 
-    struct KnockbackEffect : IEffect {
-        public float impulseMagnitude;
-        private static readonly Vector3 defaultDir = Vector3.forward;
-
-        public event Action<IEffect> OnCompleted;
-
-        public void Apply(IEntity caster, Vector3 source, IEntity target) {
-            if (target == null) return;
-
-            Vector3 dir = target.GetPosition() - caster.GetPosition();
-
-            target.ApplyKnockback(dir * impulseMagnitude);
-            OnCompleted?.Invoke(this);
-        }
-
-        public void Cancel() {
-            OnCompleted?.Invoke(this);
-        }
-    }
+    public void Cancel() => OnCompleted?.Invoke(this);
+    public IEffect Clone() => new KnockbackEffect() { impulseMagnitude = impulseMagnitude };
 }
 
 [Serializable]
-public class DamageOverTimeEffectFactory : IEffectFactory {
-    public float duration = 5f;
-    public float tickInterval = 1f;
-    public float damagePerTick = 5f;
+public class DamageOverTimeEffect : IEffect {
+    [SerializeField] float duration = 5;
+    [SerializeField] float tickInterval = 1;
+    [SerializeField] float damagePerTick = 5;
 
-    public IEffect Create() {
-        return new DamageOverTimeEffect {
-            duration = duration,
-            tickInterval = tickInterval,
-            damagePerTick = damagePerTick
+    IntervalTimer timer;
+    IEntity currentTarget;
+
+    public event Action<IEffect> OnCompleted;
+
+    public void Apply(EffectContext context) {
+        currentTarget = context.Target;
+        timer = new IntervalTimer(duration, tickInterval) {
+            OnInterval = OnInterval,
+            OnTimerStop = CleanUp
         };
+        timer.Start();
     }
 
-    struct DamageOverTimeEffect : IEffect {
-        public float duration;
-        public float tickInterval;
-        public float damagePerTick;
+    void OnInterval() => currentTarget?.TakeDamage(damagePerTick);
 
-        IntervalTimer timer;
-        IEntity currentTarget;
-
-        public event Action<IEffect> OnCompleted;
-
-        public void Apply(IEntity caster, Vector3 source, IEntity target) {
-            currentTarget = target;
-            timer = new IntervalTimer(duration, tickInterval);
-            timer.OnInterval = OnInterval;
-            timer.OnTimerStop = CleanUp;
-            timer.Start();
-        }
-
-        void OnInterval() => currentTarget?.TakeDamage(damagePerTick);
-
-        void CleanUp() {
-            timer = null;
-            currentTarget = null;
-            OnCompleted?.Invoke(this);
-        }
-
-        public void Cancel() {
-            timer?.Stop();
-        }
+    void CleanUp() {
+        timer = null;
+        currentTarget = null;
+        OnCompleted?.Invoke(this);
     }
+
+    public void Cancel() => timer?.Stop();
+    public IEffect Clone() => new DamageOverTimeEffect() { duration = duration };
 }

@@ -197,5 +197,11 @@ public class EntityController : MonoBehaviour {
 
     public Vector3 GetVelocity() => rb.linearVelocity;
 
+    public Vector3 GetHorizontalVelocity() {
+        Vector3 horVel = GetVelocity();
+        horVel.y = 0;
+        return horVel;
+    }
+
     public Vector3 GetMoveDirection() => mover.GetMoveDirection();
 }

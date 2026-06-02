@@ -13,15 +13,15 @@ public readonly struct EntityLayerMask {
 
     public EntityLayerMask(int value) => mask = value;
 
-    public static implicit operator EntityLayerMask(int value) => new EntityLayerMask(value);
-    public static implicit operator EntityLayerMask(EntityType type) => new EntityLayerMask((int) type);
+    public static implicit operator EntityLayerMask(int value) => new(value);
+    public static implicit operator EntityLayerMask(EntityType type) => new((int) type);
     public static implicit operator int(EntityLayerMask mask) => mask.mask;
 
-    public static EntityLayerMask operator +(EntityLayerMask a, EntityLayerMask b) => new EntityLayerMask(a.mask | b.mask);
-    public static EntityLayerMask operator +(EntityLayerMask a, int b) => new EntityLayerMask(a.mask | b);
-    public static EntityLayerMask operator +(EntityLayerMask a, EntityType b) => new EntityLayerMask(a.mask | (int) b);
-    public static EntityLayerMask operator -(EntityLayerMask a, EntityLayerMask b) => new EntityLayerMask(a.mask & ~(int) b);
-    public static EntityLayerMask operator -(EntityLayerMask a, int b) => new EntityLayerMask(a.mask & ~b);
+    public static EntityLayerMask operator +(EntityLayerMask a, EntityLayerMask b) => new(a.mask | b.mask);
+    public static EntityLayerMask operator +(EntityLayerMask a, int b) => new(a.mask | b);
+    public static EntityLayerMask operator +(EntityLayerMask a, EntityType b) => new(a.mask | (int) b);
+    public static EntityLayerMask operator -(EntityLayerMask a, EntityLayerMask b) => new(a.mask & ~(int) b);
+    public static EntityLayerMask operator -(EntityLayerMask a, int b) => new(a.mask & ~b);
 
     public bool Contains(EntityType type) {
         return (mask & (int) type) != 0;
@@ -35,20 +35,15 @@ public readonly struct EntityLayerMask {
 
 public interface IEntity {
     float GetHealth();
+    bool IsAlive();
     EntityLayerMask GetType();
     Vector3 GetPosition();
     Vector3 GetLookDirection();
     Vector3 GetMoveDirection();
     Vector3 GetVelocity();
-    void ApplyEffect(IEntity caster, Vector3 source, IEffect effect);
+    void AlertEffect(IEffect effect);
+    void AlertThreat(IEntity threat);
     void TakeDamage(float damage);
     void HealHealth(float amount);
-    void LockPosition(float time);
-    void LockLookDirection(float time);
-    void LockMoveDirection(float time);
-    void Slowdown(float percentage, float time);
-    void Speedup(float percentage, float time);
-    void Accelerate(float percentage, float time);
-    void Deccelerate(float percentage, float time);
     void ApplyKnockback(Vector3 impulse);
 }
