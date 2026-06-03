@@ -11,6 +11,7 @@ public class EnemyAIMovement : MonoBehaviour {
     EntityController controller;
     StateMachine stateMachine;
     NavMeshAgent agent;
+    Animator animator;
 
     IEntity self;
     IEntity? target = null!;
@@ -28,7 +29,7 @@ public class EnemyAIMovement : MonoBehaviour {
 
     [Header("Logic Controller")]
     [SerializeField, Min(0)] float targetDetectRadius = 5f;
-    [SerializeField, Min(0)] int maxSearchConstraint = 10;
+    [SerializeField, Min(0)] int maxSearchConstraint = 3;
     [SerializeField] LayerMask searchMask;
     [SerializeField] LayerMask confirmMask;
     float distanceFromTarget;
@@ -39,6 +40,8 @@ public class EnemyAIMovement : MonoBehaviour {
         self = GetComponent<IEntity>();
         agent = GetComponent<NavMeshAgent>();
         controller = GetComponent<EntityController>();
+        animator = GetComponent<Animator>();
+
         stateMachine = new();
 
         agent.updatePosition = false;
@@ -74,20 +77,24 @@ public class EnemyAIMovement : MonoBehaviour {
     class IdleState : BaseState {
 
         EnemyAIMovement movement;
-        Coroutine searchRoutine = null!;
+        bool targetFound;
 
-        public IdleState(EntityController controller, IEntity self, EnemyAIMovement movement) : base(controller, self) { this.movement = movement; }
+        public IdleState(EntityController controller, IEntity self, EnemyAIMovement movement) : base(controller, self) { 
+            this.movement = movement; 
+        }
 
         public override void OnEnter() {
             movement.target = null;
-            searchRoutine = movement.StartCoroutine(Search());
+            targetFound = false;
+            movement.animator.SetFloat("Random", Random.Range(0f, 1f));
         }
 
-        public override void FixedUpdate() => controller.Move(Vector2.zero, 0, 0, movement.idleSettings.decel, 0.5f);
+        public override void FixedUpdate() {
+            controller.Move(Vector2.zero, 0, 0, movement.idleSettings.decel, 0.5f);
 
-        public override void OnExit() => movement.StopCoroutine(searchRoutine);
+            if (targetFound)
+                return;
 
-        IEnumerator Search() {
             Collider[] entities = Physics.OverlapSphere(movement.transform.position, movement.targetDetectRadius, movement.searchMask);
 
             IEntity closestVisibleEntity = null!;
@@ -104,15 +111,13 @@ public class EnemyAIMovement : MonoBehaviour {
 
                     if (hit.transform.gameObject == entities[i].transform.gameObject && minDistance > distance) {
                         closestVisibleEntity = entities[i].GetComponent<IEntity>();
+                        targetFound = true;
                         minDistance = distance;
                     }
                 }
-
-                yield return null;
             }
 
             movement.target = closestVisibleEntity;
-            searchRoutine = movement.StartCoroutine(Search());
         }
     }
 
@@ -125,6 +130,7 @@ public class EnemyAIMovement : MonoBehaviour {
         public override void OnEnter() {
             movement.distanceFromTarget = 0;
             movement.jumpStartTimer = 0;
+            movement.animator.SetBool("Walk", true);
         }
 
         public override void Update() {
@@ -194,6 +200,9 @@ public class EnemyAIMovement : MonoBehaviour {
                 controller.Float(dir, speed, movement.chaseSettings.accel, movement.chaseSettings.decel, 1f);
         }
 
-        public override void OnExit() => movement.agent.ResetPath();
+        public override void OnExit() {
+            movement.agent.ResetPath();
+            movement.animator.SetBool("Walk", false);
+        }
     }
 }
