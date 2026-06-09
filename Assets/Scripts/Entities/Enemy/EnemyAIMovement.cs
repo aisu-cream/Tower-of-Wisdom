@@ -1,7 +1,4 @@
-﻿# nullable enable
-
-using System.Collections;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent)), RequireComponent(typeof(EntityController))]
@@ -14,7 +11,7 @@ public class EnemyAIMovement : MonoBehaviour {
     Animator animator;
 
     IEntity self;
-    IEntity? target = null!;
+    IEntity target = null;
     ContactFilter2D searchFilter = new();
 
     [Header("Locomotion Settings")]
@@ -53,7 +50,7 @@ public class EnemyAIMovement : MonoBehaviour {
     void Start() {
         var idleState = new IdleState(controller, self, this);
         var chaseState = new ChaseState(controller, self, this);
-
+        
         At(idleState, chaseState, new FuncPredicate(() => target != null));
         At(chaseState, idleState, new FuncPredicate(() => target == null || !agent.isOnOffMeshLink && distanceFromTarget > targetDetectRadius * 2));
 
@@ -205,4 +202,8 @@ public class EnemyAIMovement : MonoBehaviour {
             movement.animator.SetBool("Walk", false);
         }
     }
+
+    //class AttackState : BaseState {
+
+    //}
 }

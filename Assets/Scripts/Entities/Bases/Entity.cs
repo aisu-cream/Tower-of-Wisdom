@@ -14,11 +14,15 @@ public class Entity : MonoBehaviour, IEntity {
     readonly List<IEffect> activeEffects = new();
 
     IEntity currentThreat;
+    Animator animator;
 
     void Awake() {
         controller = GetComponent<EntityController>();
+        animator = GetComponent<Animator>();
         health = maxHealth;
     }
+
+    public Animator Animator => animator;
 
     public float GetHealth() {
         return health;

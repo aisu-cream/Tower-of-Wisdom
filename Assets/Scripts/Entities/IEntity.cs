@@ -34,6 +34,7 @@ public readonly struct EntityLayerMask {
 }
 
 public interface IEntity {
+    Animator Animator { get; }
     float GetHealth();
     float GetInitialHealth();
     bool IsAlive();
