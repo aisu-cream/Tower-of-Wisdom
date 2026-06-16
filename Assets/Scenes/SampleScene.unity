@@ -5955,7 +5955,6 @@ GameObject:
   - component: {fileID: 1305061997}
   - component: {fileID: 1305061988}
   - component: {fileID: 1305061987}
-  - component: {fileID: 1305061996}
   - component: {fileID: 1305061995}
   - component: {fileID: 1305061998}
   m_Layer: 6
@@ -8069,9 +8068,9 @@ MonoBehaviour:
     accel: 8
     decel: 8
   chaseSettings:
-    targetSpeed: 6
-    accel: 6
-    decel: 6
+    targetSpeed: 4
+    accel: 8
+    decel: 8
   jumpStrength: 15
   jumpNlagTime: 0.15
   targetDetectRadius: 5

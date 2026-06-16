@@ -45,7 +45,6 @@ namespace AbilitySystem {
         }
 
         void Update() {
-            Debug.Log(currentState);
             if (currentState == AbilityState.startup && !CanEnterActiveState())
                 currentState = AbilityState.inactive;
         }
