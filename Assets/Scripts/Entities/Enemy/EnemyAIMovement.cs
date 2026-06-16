@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.AI;
+using AbilitySystem;
 
 [RequireComponent(typeof(NavMeshAgent)), RequireComponent(typeof(EntityController))]
 public class EnemyAIMovement : MonoBehaviour {
@@ -11,6 +12,7 @@ public class EnemyAIMovement : MonoBehaviour {
     Animator animator;
 
     IEntity self;
+    IAbility ability;
     IEntity target = null;
     ContactFilter2D searchFilter = new();
 
@@ -38,6 +40,7 @@ public class EnemyAIMovement : MonoBehaviour {
         agent = GetComponent<NavMeshAgent>();
         controller = GetComponent<EntityController>();
         animator = GetComponent<Animator>();
+        ability = GetComponent<IAbility>();
 
         stateMachine = new();
 
@@ -50,9 +53,13 @@ public class EnemyAIMovement : MonoBehaviour {
     void Start() {
         var idleState = new IdleState(controller, self, this);
         var chaseState = new ChaseState(controller, self, this);
-        
+        var attackState = new AttackState(controller, self, this);
+
         At(idleState, chaseState, new FuncPredicate(() => target != null));
-        At(chaseState, idleState, new FuncPredicate(() => target == null || !agent.isOnOffMeshLink && distanceFromTarget > targetDetectRadius * 2));
+        At(chaseState, idleState, new FuncPredicate(() => !agent.isOnOffMeshLink && distanceFromTarget > targetDetectRadius));
+        At(chaseState, attackState, new FuncPredicate(() => ability.CanCast() && distanceFromTarget <= 1));
+        At(attackState, chaseState, new FuncPredicate(() => ability.GetState() == AbilityState.inactive && distanceFromTarget <= targetDetectRadius));
+        At(attackState, idleState, new FuncPredicate(() => ability.GetState() == AbilityState.inactive && distanceFromTarget > targetDetectRadius));
 
         stateMachine.SetState(idleState);
     }
@@ -83,7 +90,6 @@ public class EnemyAIMovement : MonoBehaviour {
         public override void OnEnter() {
             movement.target = null;
             targetFound = false;
-            movement.animator.SetFloat("Random", Random.Range(0f, 1f));
         }
 
         public override void FixedUpdate() {
@@ -94,7 +100,7 @@ public class EnemyAIMovement : MonoBehaviour {
 
             Collider[] entities = Physics.OverlapSphere(movement.transform.position, movement.targetDetectRadius, movement.searchMask);
 
-            IEntity closestVisibleEntity = null!;
+            IEntity closestVisibleEntity = null;
             float minDistance = float.MaxValue;
 
             for (int i = 0; i < entities.Length && i < movement.maxSearchConstraint; i++) {
@@ -125,13 +131,12 @@ public class EnemyAIMovement : MonoBehaviour {
         public ChaseState(EntityController controller, IEntity self, EnemyAIMovement movement) : base(controller, self) { this.movement = movement; }
 
         public override void OnEnter() {
-            movement.distanceFromTarget = 0;
             movement.jumpStartTimer = 0;
             movement.animator.SetBool("Walk", true);
         }
 
         public override void Update() {
-            if (!movement.target!.IsAlive()) {
+            if (!movement.target.IsAlive()) {
                 movement.target = null;
                 return;
             }
@@ -203,7 +208,15 @@ public class EnemyAIMovement : MonoBehaviour {
         }
     }
 
-    //class AttackState : BaseState {
+    class AttackState : BaseState {
+        
+        EnemyAIMovement movement;
 
-    //}
+        public AttackState(EntityController controller, IEntity self, EnemyAIMovement movement) : base(controller, self) => this.movement = movement;
+
+        public override void OnEnter() => movement.ability.TryCast();
+        public override void FixedUpdate() {
+            controller.Move(Vector3.zero, 0, 8, 8, 1);
+        }
+    }
 }

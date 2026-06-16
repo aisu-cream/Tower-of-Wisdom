@@ -5510,10 +5510,11 @@ GameObject:
   - component: {fileID: 1305061991}
   - component: {fileID: 1305061990}
   - component: {fileID: 1305061989}
+  - component: {fileID: 1305061997}
   - component: {fileID: 1305061988}
   - component: {fileID: 1305061987}
   - component: {fileID: 1305061995}
-  - component: {fileID: 1305061997}
+  - component: {fileID: 1305061998}
   m_Layer: 6
   m_Name: Player
   m_TagString: Untagged
@@ -5683,27 +5684,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa51eef98d50cf64b82ff5f98cdc0348, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  abilities:
-  - abilityData: {fileID: 11400000, guid: 2bcae6317b951dc41a597ca996c983a0, type: 2}
-    behaviour:
-      rid: 8451270182218236006
-  - abilityData: {fileID: 0}
-    behaviour:
-      rid: -2
-  - abilityData: {fileID: 0}
-    behaviour:
-      rid: -2
-  - abilityData: {fileID: 0}
-    behaviour:
-      rid: -2
-  references:
-    version: 2
-    RefIds:
-    - rid: -2
-      type: {class: , ns: , asm: }
-    - rid: 8451270182218236006
-      type: {class: SelfTargeting, ns: , asm: Assembly-CSharp}
-      data: 
+  abilities: []
 --- !u!114 &1305061997
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5716,7 +5697,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4df23682769c954d9af9e5da502e21c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHealth: 100
+  maxHealth: 30
+--- !u!114 &1305061998
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1305061986}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dfec09df309dbe54fbbdff952c5f443a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AbilitySystem.AnimationEventHandler
 --- !u!1 &1375286170
 GameObject:
   m_ObjectHideFlags: 0
@@ -7574,6 +7567,8 @@ GameObject:
   - component: {fileID: 6308079871264817208}
   - component: {fileID: 6308079871264817207}
   - component: {fileID: 6308079871264817209}
+  - component: {fileID: 6308079871264817211}
+  - component: {fileID: 6308079871264817212}
   m_Layer: 6
   m_Name: Enemy
   m_TagString: Untagged
@@ -7613,7 +7608,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4df23682769c954d9af9e5da502e21c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHealth: 100
+  maxHealth: 1000
 --- !u!114 &6308079871264817209
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7666,6 +7661,40 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &6308079871264817211
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6308079871264817206}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dfec09df309dbe54fbbdff952c5f443a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AbilitySystem.AnimationEventHandler
+--- !u!114 &6308079871264817212
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6308079871264817206}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b93d6a2dff5ac24a87b6d0d0b47f244, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Bite
+  abilityData: {fileID: 11400000, guid: b82e890c957d5574484ade3663edafe9, type: 2}
+  manager:
+    rid: 3796033431071359077
+  references:
+    version: 2
+    RefIds:
+    - rid: 3796033431071359077
+      type: {class: SphereTargeting, ns: , asm: Assembly-CSharp}
+      data:
+        radius: 1
 --- !u!114 &6921145329980846189
 MonoBehaviour:
   m_ObjectHideFlags: 0

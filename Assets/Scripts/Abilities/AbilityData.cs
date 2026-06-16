@@ -2,18 +2,19 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace AbilitySystem {
+    [CreateAssetMenu(fileName = "AbilityData", menuName = "ScriptableObjects/AbilityDataScriptableObject")]
     public class AbilityData : ScriptableObject {
         public string label;
 
         [SerializeField, Min(0)] float cooldown;
 
         [Header("Cast")]
-        [SerializeField] List<IConstraint> preconditions;
-        [SerializeField] List<IEffect> costs;
+        [SerializeReference] List<IConstraint> preconditions;
+        [SerializeReference] List<IEffect> costs;
 
         [Header("Impact")]
-        [SerializeField] List<IConstraint> targetConditions;
-        [SerializeField] List<IEffect> effects;
+        [SerializeReference] List<IConstraint> targetConditions;
+        [SerializeReference] List<IEffect> effects;
 
         void OnEnable() {
             if (string.IsNullOrEmpty(label)) label = name;

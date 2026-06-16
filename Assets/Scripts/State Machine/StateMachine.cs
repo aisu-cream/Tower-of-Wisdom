@@ -27,7 +27,7 @@ public class StateMachine {
     }
 
     void ChangeState(IState state) {
-        if (state == current.State) return;
+        //if (state == current.State) return;
 
         var previousState = current.State;
         var nextState = nodes[state.GetType()].State;

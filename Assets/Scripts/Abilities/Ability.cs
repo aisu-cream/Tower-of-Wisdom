@@ -1,129 +1,156 @@
-using UnityEngine;
-using AbilitySystem;
 using ImprovedTimers;
 using System.Collections.Generic;
+using UnityEngine;
 
-/**
- * The most basic type of ability where you consume cost only once and apply single set of predefined effects to target(s).
- * If more complex abilities are needed, such as an ability that continuously consume cost or an ability that applies different effects based on the target, 
- * use different IAbility implementations.
- * To use this class, one must supply abilityData and abilityBehaviour.
- */
-[System.Serializable]
-public abstract class Ability : IAbility {
+namespace AbilitySystem {
+    /**
+     * The most basic type of ability where you consume cost only once and apply single set of predefined effects to target(s).
+     * If more complex abilities are needed, such as an ability that continuously consume cost or an ability that applies different effects based on the target, 
+     * use different IAbility implementations.
+     * To use this class, one must supply abilityData and abilityBehaviour.
+     */
+    [System.Serializable]
+    public abstract class Ability : MonoBehaviour, IAbility {
 
-    [SerializeField] AbilityData abilityData;
+        // merge these two (data can have targeting info, such as hitbox) - really tho?
+        [SerializeField] AbilityData abilityData;
+        [SerializeReference] TargetingManager manager;
 
-    TargetingManager manager;
-    Animator animator;
-    CountdownTimer cooldownTimer;
+        AnimationEventHandler handler;
+        Animator animator;
 
-    AbilityState currentState;
-    IEntity caster;
+        CountdownTimer cooldownTimer;
+        AbilityState currentState;
+        IEntity caster;
 
-    public Ability() {
-        cooldownTimer = new CountdownTimer(abilityData.Cooldown);
-        currentState = AbilityState.inactive;
-        manager.OnTargetFound += OnTargetFound;
-    }
+        int animationTriggerHash;
 
-    public void Awake(IEntity caster, TargetingManager manager, Animator animator) {
-        this.caster = caster;
-        this.manager = manager;
-        this.animator = animator;
-    }
+        public Ability(string animationTrigger) {
+            animationTriggerHash = Animator.StringToHash(animationTrigger);
+            currentState = AbilityState.inactive;
+        }
 
-    public float GetCooldownRemaining() {
-        return cooldownTimer.CurrentTime;
-    }
+        void Awake() {
+            caster = GetComponent<IEntity>();
+            handler = GetComponent<AnimationEventHandler>();
+            animator = GetComponent<Animator>();
+        }
 
-    public float GetCooldownDuration() {
-        return abilityData.Cooldown;
-    }
+        void Start() {
+            cooldownTimer = new CountdownTimer(abilityData.Cooldown);
+        }
 
-    public AbilityState GetState() {
-        return currentState;
-    }
+        void OnDisable() {
+            EndAbility();
+        }
 
-    public IEntity GetCaster() {
-        return caster;
-    }
-
-    public virtual void Update() {
-        if (currentState == AbilityState.startup) {
-            if (!CanCast())
+        void Update() {
+            Debug.Log(currentState);
+            if (currentState == AbilityState.startup && !CanEnterActiveState())
                 currentState = AbilityState.inactive;
         }
-    }
 
-    public virtual bool CanCast() {
-        if (caster == null || manager == null || currentState != AbilityState.inactive || !cooldownTimer.IsFinished)
-            return false;
+        public float GetCooldownRemaining() {
+            return cooldownTimer.CurrentTime;
+        }
 
-        foreach (IConstraint precondition in abilityData.Preconditions) {
-            if (!precondition.Evaluate(caster))
+        public float GetCooldownDuration() {
+            return abilityData.Cooldown;
+        }
+
+        public AbilityState GetState() {
+            return currentState;
+        }
+
+        public IEntity GetCaster() {
+            return caster;
+        }
+
+        public bool CanCast() {
+            if (GetState() != AbilityState.inactive || !cooldownTimer.IsFinished)
                 return false;
+
+            return CanEnterActiveState();
         }
 
-        return true;
-    }
-
-    public void TryCast() {
-        if (!CanCast())
-            return;
-
-        currentState = AbilityState.startup;
-        cooldownTimer.Reset(abilityData.Cooldown);
-        cooldownTimer.Start();
-
-        PlayAbilityAnimation();
-    }
-
-    protected abstract void PlayAbilityAnimation();
-
-    protected virtual void OnTargetFound(List<IEntity> candidateTargets) {
-        if (currentState == AbilityState.startup)
-            SpendCost();
-
-        currentState = AbilityState.active;
-        List<IEntity> targets = GetValidTargets(candidateTargets);
-
-        foreach (IEntity target in targets)
-            ApplyEffects(target);
-    }
-
-    protected List<IEntity> GetValidTargets(List<IEntity> candidateTargets) {
-        List<IEntity> targets = new List<IEntity>();
-
-        foreach (IEntity candidate in candidateTargets) {
-            if (IsValidCandidate(candidate))
-                targets.Add(candidate);
-        }
-
-        return targets;
-    }
-
-    bool IsValidCandidate(IEntity candidate) {
-        foreach (IConstraint targetCondition in abilityData.TargetConditions) {
-            if (!targetCondition.Evaluate(candidate))
+        bool CanEnterActiveState() {
+            if (caster == null || handler == null)
                 return false;
+
+            foreach (IConstraint precondition in abilityData.Preconditions) {
+                if (!precondition.Evaluate(caster))
+                    return false;
+            }
+
+            return true;
         }
 
-        return true;
-    }
+        public void TryCast() {
+            if (!CanCast())
+                return;
 
-    protected void ApplyEffects(IEntity target) {
-        foreach (IEffect effect in abilityData.Effects) {
-            IEffect effectInstance = effect.Clone();
-            effectInstance.Apply(target);
-            target.AlertEffect(effectInstance);
+            currentState = AbilityState.startup;
+            animator.SetTrigger(animationTriggerHash);
+
+            cooldownTimer.Reset(abilityData.Cooldown);
+            cooldownTimer.Start();
+
+            handler.OnAttackFrame += OnAttackFrame;
+            handler.OnAnimationFinished += EndAbility;
         }
-    }
 
-    protected void SpendCost() {
-        foreach (IEffect cost in abilityData.Costs) {
-            IEffect costInstance = cost.Clone();
-            costInstance.Apply(caster);
+        public void EndAbility() {
+            animator.ResetTrigger(animationTriggerHash);
+            currentState = AbilityState.inactive;
+
+            handler.OnAttackFrame -= OnAttackFrame;
+            handler.OnAnimationFinished -= EndAbility;
+        }
+
+        void OnAttackFrame() {
+            if (currentState == AbilityState.startup)
+                SpendCost();
+
+            currentState = AbilityState.active;
+            List<IEntity> targets = EvaluateValidTargets(manager.FindTargets(caster.GetPosition()));
+
+            foreach (IEntity target in targets)
+                ApplyEffects(target);
+        }
+
+        List<IEntity> EvaluateValidTargets(List<IEntity> candidateTargets) {
+            List<IEntity> targets = new List<IEntity>();
+
+            foreach (IEntity candidate in candidateTargets) {
+                if (IsValidCandidate(candidate))
+                    targets.Add(candidate);
+            }
+
+            return targets;
+        }
+
+        bool IsValidCandidate(IEntity candidate) {
+            foreach (IConstraint targetCondition in abilityData.TargetConditions) {
+                if (!targetCondition.Evaluate(candidate))
+                    return false;
+            }
+
+            return true;
+        }
+
+        void ApplyEffects(IEntity target) {
+            foreach (IEffect effect in abilityData.Effects) {
+                IEffect effectInstance = effect.Clone();
+                effectInstance.Apply(target);
+                target.AlertEffect(effectInstance);
+            }
+        }
+
+        void SpendCost() {
+            foreach (IEffect cost in abilityData.Costs) {
+                IEffect costInstance = cost.Clone();
+                costInstance.Apply(caster);
+            }
         }
     }
 }

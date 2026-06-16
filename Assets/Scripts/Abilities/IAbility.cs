@@ -8,8 +8,6 @@ public enum AbilityState {
 
 namespace AbilitySystem {
     public interface IAbility {
-        void Awake(IEntity caster, TargetingManager manager, Animator animator);
-        void Update();
         float GetCooldownRemaining();
         float GetCooldownDuration();
         AbilityState GetState();
