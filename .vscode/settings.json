@@ -56,5 +56,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Tower-of-Wisdom.sln"
+    "dotnet.defaultSolution": "Tower-of-Wisdom.slnx"
 }

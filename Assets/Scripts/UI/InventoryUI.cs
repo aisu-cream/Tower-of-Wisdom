@@ -33,7 +33,6 @@ public class InventoryUI : MonoBehaviour
     private int GetSlotCount()
     {
         // TEMP — replace this later with real inventory count
-        testSlotCount = 10;
         return testSlotCount;
     }
 

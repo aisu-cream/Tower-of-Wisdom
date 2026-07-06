@@ -7,7 +7,7 @@ public interface IEffectFactory {
 }
 
 public interface IEffect {
-    void Apply(EffectContext context);
+    void Apply(IEntity target);
     void Cancel();
     IEffect Clone();
     event Action<IEffect> OnCompleted;
@@ -19,28 +19,13 @@ public class DamageEffect : IEffect {
 
     public event Action<IEffect> OnCompleted;
 
-    public void Apply(EffectContext context) {
-        context.Target.TakeDamage(amount);
+    public void Apply(IEntity target) {
+        target.TakeDamage(amount);
         OnCompleted?.Invoke(this);
     }
 
     public void Cancel() => OnCompleted?.Invoke(this);
     public IEffect Clone() => new DamageEffect() { amount = amount };
-}
-
-[Serializable]
-public class KnockbackEffect : IEffect {
-    [SerializeField] float impulseMagnitude = 1;
-    public event Action<IEffect> OnCompleted;
-
-    public void Apply(EffectContext context) {
-        Vector3 dir = context.Direction;
-        context.Target.ApplyKnockback(dir * impulseMagnitude);
-        OnCompleted?.Invoke(this);
-    }
-
-    public void Cancel() => OnCompleted?.Invoke(this);
-    public IEffect Clone() => new KnockbackEffect() { impulseMagnitude = impulseMagnitude };
 }
 
 [Serializable]
@@ -54,8 +39,8 @@ public class DamageOverTimeEffect : IEffect {
 
     public event Action<IEffect> OnCompleted;
 
-    public void Apply(EffectContext context) {
-        currentTarget = context.Target;
+    public void Apply(IEntity target) {
+        currentTarget = target;
         timer = new IntervalTimer(duration, tickInterval) {
             OnInterval = OnInterval,
             OnTimerStop = CleanUp

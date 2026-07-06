@@ -1,8 +1,6 @@
-﻿# nullable enable
-
-using System.Collections;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.AI;
+using AbilitySystem;
 
 [RequireComponent(typeof(NavMeshAgent)), RequireComponent(typeof(EntityController))]
 public class EnemyAIMovement : MonoBehaviour {
@@ -11,9 +9,11 @@ public class EnemyAIMovement : MonoBehaviour {
     EntityController controller;
     StateMachine stateMachine;
     NavMeshAgent agent;
+    Animator animator;
 
     IEntity self;
-    IEntity? target = null!;
+    IAbility ability;
+    IEntity target = null;
     ContactFilter2D searchFilter = new();
 
     [Header("Locomotion Settings")]
@@ -28,7 +28,7 @@ public class EnemyAIMovement : MonoBehaviour {
 
     [Header("Logic Controller")]
     [SerializeField, Min(0)] float targetDetectRadius = 5f;
-    [SerializeField, Min(0)] int maxSearchConstraint = 10;
+    [SerializeField, Min(0)] int maxSearchConstraint = 3;
     [SerializeField] LayerMask searchMask;
     [SerializeField] LayerMask confirmMask;
     float distanceFromTarget;
@@ -39,6 +39,9 @@ public class EnemyAIMovement : MonoBehaviour {
         self = GetComponent<IEntity>();
         agent = GetComponent<NavMeshAgent>();
         controller = GetComponent<EntityController>();
+        animator = GetComponent<Animator>();
+        ability = GetComponent<IAbility>();
+
         stateMachine = new();
 
         agent.updatePosition = false;
@@ -50,9 +53,13 @@ public class EnemyAIMovement : MonoBehaviour {
     void Start() {
         var idleState = new IdleState(controller, self, this);
         var chaseState = new ChaseState(controller, self, this);
+        var attackState = new AttackState(controller, self, this);
 
         At(idleState, chaseState, new FuncPredicate(() => target != null));
-        At(chaseState, idleState, new FuncPredicate(() => target == null || !agent.isOnOffMeshLink && distanceFromTarget > targetDetectRadius * 2));
+        At(chaseState, idleState, new FuncPredicate(() => !agent.isOnOffMeshLink && distanceFromTarget > targetDetectRadius));
+        At(chaseState, attackState, new FuncPredicate(() => ability.CanCast() && distanceFromTarget <= 1));
+        At(attackState, chaseState, new FuncPredicate(() => ability.GetState() == AbilityState.inactive && distanceFromTarget <= targetDetectRadius));
+        At(attackState, idleState, new FuncPredicate(() => ability.GetState() == AbilityState.inactive && distanceFromTarget > targetDetectRadius));
 
         stateMachine.SetState(idleState);
     }
@@ -74,23 +81,26 @@ public class EnemyAIMovement : MonoBehaviour {
     class IdleState : BaseState {
 
         EnemyAIMovement movement;
-        Coroutine searchRoutine = null!;
+        bool targetFound;
 
-        public IdleState(EntityController controller, IEntity self, EnemyAIMovement movement) : base(controller, self) { this.movement = movement; }
+        public IdleState(EntityController controller, IEntity self, EnemyAIMovement movement) : base(controller, self) { 
+            this.movement = movement; 
+        }
 
         public override void OnEnter() {
             movement.target = null;
-            searchRoutine = movement.StartCoroutine(Search());
+            targetFound = false;
         }
 
-        public override void FixedUpdate() => controller.Move(Vector2.zero, 0, 0, movement.idleSettings.decel, 0.5f);
+        public override void FixedUpdate() {
+            controller.Move(Vector2.zero, 0, 0, movement.idleSettings.decel, 0.5f);
 
-        public override void OnExit() => movement.StopCoroutine(searchRoutine);
+            if (targetFound)
+                return;
 
-        IEnumerator Search() {
             Collider[] entities = Physics.OverlapSphere(movement.transform.position, movement.targetDetectRadius, movement.searchMask);
 
-            IEntity closestVisibleEntity = null!;
+            IEntity closestVisibleEntity = null;
             float minDistance = float.MaxValue;
 
             for (int i = 0; i < entities.Length && i < movement.maxSearchConstraint; i++) {
@@ -104,15 +114,13 @@ public class EnemyAIMovement : MonoBehaviour {
 
                     if (hit.transform.gameObject == entities[i].transform.gameObject && minDistance > distance) {
                         closestVisibleEntity = entities[i].GetComponent<IEntity>();
+                        targetFound = true;
                         minDistance = distance;
                     }
                 }
-
-                yield return null;
             }
 
             movement.target = closestVisibleEntity;
-            searchRoutine = movement.StartCoroutine(Search());
         }
     }
 
@@ -123,12 +131,12 @@ public class EnemyAIMovement : MonoBehaviour {
         public ChaseState(EntityController controller, IEntity self, EnemyAIMovement movement) : base(controller, self) { this.movement = movement; }
 
         public override void OnEnter() {
-            movement.distanceFromTarget = 0;
             movement.jumpStartTimer = 0;
+            movement.animator.SetBool("Walk", true);
         }
 
         public override void Update() {
-            if (!movement.target!.IsAlive()) {
+            if (!movement.target.IsAlive()) {
                 movement.target = null;
                 return;
             }
@@ -194,6 +202,21 @@ public class EnemyAIMovement : MonoBehaviour {
                 controller.Float(dir, speed, movement.chaseSettings.accel, movement.chaseSettings.decel, 1f);
         }
 
-        public override void OnExit() => movement.agent.ResetPath();
+        public override void OnExit() {
+            movement.agent.ResetPath();
+            movement.animator.SetBool("Walk", false);
+        }
+    }
+
+    class AttackState : BaseState {
+        
+        EnemyAIMovement movement;
+
+        public AttackState(EntityController controller, IEntity self, EnemyAIMovement movement) : base(controller, self) => this.movement = movement;
+
+        public override void OnEnter() => movement.ability.TryCast();
+        public override void FixedUpdate() {
+            controller.Move(Vector3.zero, 0, 8, 8, 1);
+        }
     }
 }
