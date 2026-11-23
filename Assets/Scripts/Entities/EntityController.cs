@@ -150,7 +150,8 @@ public class EntityController : MonoBehaviour, ICharacterController {
             currentVelocity += (Mathf.Sign(verticalVelocity) * dragConst * verticalVelocity * verticalVelocity - gravitationalAcceleration) * deltaTime * motor.CharacterUp;
         }
 
-        if (jumpRequested && motor.GroundingStatus.IsStableOnGround) {
+        // grounding/coyote rules are decided by the caller; a pending request always executes on the next tick
+        if (jumpRequested) {
             Jump(ref currentVelocity);
             jumpRequested = false;
         }

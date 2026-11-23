@@ -31,7 +31,13 @@ public class PlayerStatemachine : MonoBehaviour {
     [Header("Air Settings")]
     [Min(0)] public float jumpBufferTime = 0.1f;
     [Range(0, 1)] public float airControlDegree = 0.4f;
+
+    float lastJumpPressTime = float.NegativeInfinity;
     #endregion
+
+    // true if jump was pressed within the last jumpBufferTime seconds and not consumed yet
+    bool IsJumpBuffered() => Time.time - lastJumpPressTime <= jumpBufferTime;
+    void ConsumeJumpBuffer() => lastJumpPressTime = float.NegativeInfinity;
 
     void Awake() {
         entity = GetComponent<IEntity>();
@@ -44,17 +50,21 @@ public class PlayerStatemachine : MonoBehaviour {
         FallState fallState = new(this);
 
         stateMachine.AddTransition(groundState, fallState, new FuncPredicate(() => !controller.IsStableOnGround()));
-        stateMachine.AddTransition(groundState, jumpState, new FuncPredicate(() => inputReader.JumpHeld));
+        stateMachine.AddTransition(groundState, jumpState, new FuncPredicate(() => IsJumpBuffered()));
 
-        stateMachine.AddTransition(jumpState, groundState, new FuncPredicate(() => controller.IsStableOnGround()));
+        stateMachine.AddTransition(jumpState, groundState, new FuncPredicate(() => jumpState.HasLeftGround && controller.IsStableOnGround()));
 
         stateMachine.AddTransition(fallState, groundState, new FuncPredicate(() => controller.IsStableOnGround()));
-        stateMachine.AddTransition(fallState, jumpState, new FuncPredicate(()   => inputReader.JumpHeld && fallState.CanEnterCoyoteTime()));
+        stateMachine.AddTransition(fallState, jumpState, new FuncPredicate(()   => IsJumpBuffered() && fallState.CanEnterCoyoteTime()));
 
         stateMachine.SetState(fallState);
     }
 
     void Update() {
+        // record the press before transitions are evaluated so the buffer covers this frame too
+        if (inputReader.JumpHeld)
+            lastJumpPressTime = Time.time;
+
         stateMachine.Update();
 
         Vector3 inputDir = inputReader.InputDirection;
@@ -105,12 +115,23 @@ public class PlayerStatemachine : MonoBehaviour {
 
         [Min(0)] public float jumpSpeed = 10f;
 
+        // the motor runs in FixedUpdate, so grounding can still read true for a few frames after the jump is requested;
+        // wait until the character has actually left the ground before allowing the landing transition
+        public bool HasLeftGround { get; private set; }
+
         public JumpState(PlayerStatemachine super) {
             this.super = super;
         }
 
         public void OnEnter() {
+            HasLeftGround = false;
+            super.ConsumeJumpBuffer();
             super.controller.Jump(jumpSpeed);
+        }
+
+        public void Update() {
+            if (!super.controller.IsStableOnGround())
+                HasLeftGround = true;
         }
 
         public void FixedUpdate() {
